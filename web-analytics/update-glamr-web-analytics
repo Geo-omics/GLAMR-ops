@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# Download and process greatlakesomics.org apache server logs and generate
+# web-analytic reports.
+#
+# This script is intended to be run as cron job on alpena, e.g.:
+#
+# 30 7 * * * openshift-gdick-web-app /usr/local/bin/get-glamr-apache-logs
+#
+# It can also be run standalone by the openshift-gdick-web-app or the root user.
+#
+set -eu
+source /etc/glamr-web-analytics.conf
+
+DESTDIR=$VAR_DIR/daily-logs
+LOG=$VAR_DIR/download.log
+
+# Run as the openshift web app user so that we have permission to read log
+# files and so that the created files have correct perms.
+[[ "$(id -un)" == "$OPENSHIFT_USER" ]] || exec sudo -u "$OPENSHIFT_USER" -- "$0" "$@"
+
+
+# Process options
+filter_only=false
+download=true
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --filter-only) filter_only=true;;
+        --no-download) download=false;;
+        *) echo >&2 "bad option: $1, allowed are --filter-only and --no-download"; exit 1;;
+    esac
+    shift
+done
+
+if ! [[ -t 0 && -t 1 ]] && ! $filter_only; then
+    # non-interactive, e.g. run as cron job
+    # keep a log file
+    exec 1>"$LOG" 2>&1
+fi
+
+mkdir -p -- "$VAR_DIR"
+cd "$VAR_DIR"
+
+if $download; then
+    if [[ -x "$OPENSHIFT_APACHE_LOGS" ]]; then
+        mkdir -p -- "$DESTDIR"
+        rsync -uv --dirs --no-perms --times "$OPENSHIFT_APACHE_LOGS"/ "$DESTDIR"
+        mv "$DESTDIR"/error.log "$VAR_DIR"/
+    else
+        echo >&2 "WARNING: can't access directory, skipping download: $OPENSHIFT_APACHE_LOGS"
+    fi
+fi
+
+
+function make-html () {
+    title=$1
+    shift
+    filename=$(echo "$title" | tr ' [:upper:]' '-[:lower:]').html
+    cmd=(goaccess - -a --log-format=COMBINED --html-report-title "$title" -o "$HTML_DIR/$filename" --browsers-file=/etc/goaccess/browsers.list)
+    bot_opt='--ignore-crawlers'
+    opts=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --no-ignore-crawlers) bot_opt=;;
+            *) opts+=("$1")
+        esac
+        shift
+    done
+
+    [[ -n "$bot_opt" ]] && cmd+=("$bot_opt")
+    cmd+=("${opts[@]}")
+    echo >&2 "${cmd[*]}"
+    "${cmd[@]}"
+}
+
+BOT_PATTERNS=(
+    "GET /robots\.txt"
+    "GET /.*\.php"
+    "GET /admin"
+    "GET /assets"
+    "kube-probe"
+    '"curl/'
+    "Go-http-client/"
+    "IonCrawl"
+    "python-requests"
+    "Searcherweb"
+    "semrush"
+    "duckduckgo"
+    "wpbot"
+    "seolyt.com"
+    "Facebot"
+    "Twitterbot"
+    "2ip.io"
+    "gptbot"
+)
+
+function remove-bots () {
+    grep -v -P "($(IFS=\|; echo "${BOT_PATTERNS[*]}"))"
+}
+
+if $filter_only; then
+    # For testing and evaluating the bot filter: remove all bots and print
+    # remaining logs to stdout
+    cat "$DESTDIR"/access.*.log | remove-bots
+    exit
+fi
+
+
+# Create HTML reports
+ls -1rt "$DESTDIR"/access*.log | tail -n8 | head -n7 | xargs cat | remove-bots | make-html "Last 7 days"
+cat "$DESTDIR"/access.*.log | remove-bots | make-html "All-time report"
+cat "$DESTDIR"/access.*.log | make-html "All-time with bots and everything" --no-ignore-crawlers
+cat "$DESTDIR"/access.*.log | make-html "All-time bots only" --no-ignore-crawlers --crawlers-only

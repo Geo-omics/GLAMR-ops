@@ -1,0 +1,13 @@
+# shell fragent to configure GLAMR web analytics
+
+# Path under which html files will be published
+#HTML_DIR=/var/www/html/...
+
+# Local path where log data is kept
+#VAR_DIR=/var/local/glamr-web-analytics
+
+# Remote path were apache logs are stored
+#OPENSHIFT_APACHE_LOGS=...
+
+# Local username for user with access to OPENSHIFT_APACHE_LOGS
+#OPENSHIFT_USER=

@@ -1,0 +1,17 @@
+#!/bin/bash
+set -eu
+
+CONFIG=/etc/glamr-web-analytics.conf
+source $CONFIG || { echo >&2 "You need to manually set up the config file: $CONFIG"; exit 1; }
+
+mkdir -p -- "$HTML_DIR"
+chown "$OPENSHIFT_USER" -- "$HTML_DIR"
+install --mode=644 index.html "$HTML_DIR"
+install --mode=755 update-glamr-web-analytics /usr/local/bin/
+
+
+mkdir -p -- "$VAR_DIR"
+chown "$OPENSHIFT_USER":adm -- "$VAR_DIR"
+chmod 00770 "$VAR_DIR"
+
+echo "30 7 * * * $OPENSHIFT_USER /usr/local/bin/update-glamr-web-analytics" > /etc/cron.d/glamr-web-analytics
