@@ -76,3 +76,7 @@ SCHEMA_PLOT_APPS = ['mibios_omics']
 
 STATICFILES_DIRS = ['static_var']
 LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
+
+# env override
+if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
+    ENABLE_TEST_VIEWS = True
