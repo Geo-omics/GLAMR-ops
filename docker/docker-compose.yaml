@@ -21,7 +21,7 @@ services:
       - krona:/glamr-webapp/krona-cache:rw
     environment:
       - DJANGO_DEBUG
-      - DJANGO_ENABLE_TEST_URLS
+      - DJANGO_ENABLE_TEST_VIEWS
   database:
     image: glamr.database
     restart: always

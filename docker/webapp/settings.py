@@ -80,7 +80,7 @@ FORCE_SCRIPT_NAME = '/glamr'
 LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
 
 # env override
-if os.environ.get('DJANGO_ENABLE_TEST_URLS') == 'true':
-    ENABLE_TEST_URLS = True
+if os.environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
+    ENABLE_TEST_VIEWS = True
 if os.environ.get('DJANGO_DEBUG') == 'true':
     DEBUG = True
