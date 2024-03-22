@@ -25,6 +25,7 @@ COPY start.sh /start.sh
 
 RUN    a2enmod proxy \
     && a2enmod proxy_uwsgi \
+    && a2enmod remoteip \
     && chmod +x /start.sh \
     && chown -Rf 1001:0 /var/run/apache2 \
     && chmod -Rf ug=rwx /var/run/apache2 \
