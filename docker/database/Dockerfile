@@ -1,41 +1,45 @@
 FROM debian:bookworm-slim
+
 ARG PGHOME=/var/local/postgresql
 ARG POSTGRES_UID=121
 ARG POSTGRES_GID=130
-ARG DEBIAN_FRONTEND=noninteractive 
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
 # locale setup
-RUN apt-get update && apt-get upgrade --assume-yes && apt-get install --assume-yes --no-install-recommends \
+RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
     locales \
     adduser
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen && update-locale
 ENV LANG=en_US.utf8
 
 # assign postgreq user/group corresponding to external storage
-RUN addgroup --gid $POSTGRES_GID postgres
+RUN addgroup --system --gid $POSTGRES_GID postgres
 RUN adduser --system --home=$PGHOME --no-create-home --uid $POSTGRES_UID --ingroup postgres postgres
 
-RUN apt-get update && apt-get install --assume-yes --no-install-recommends \
-    postgresql-15
+RUN apt-get update && apt-get install --assume-yes --no-install-recommends --quiet \
+    bind9-dnsutils \
+    curl \
+    iproute2 \
+    less \
+    nano \
+    net-tools \
+    postgresql-15 \
+    procps
 
-# replace data directory, normally that is /var/lib/postgres/15/main, which
-# already has a initialized DB from package installation, we leave that in
-# place and just substitute a new data directory, but leave the rest of the
-# configuration alone.  The new place needs to have something mounted via
-# docker-compose's volumes directive or docker-run's --volume option that
-# contains a ready-to-use database or have initdb run manually.
+
+COPY pg_hba.conf /etc/postgresql/15/main/
+COPY local.conf /etc/postgresql/15/main/conf.d/
+
+RUN    sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.conf \
+    && chown -R postgres:postgres /etc/postgresql/15/main/ \
+    && chmod 640 /etc/postgresql/15/main/pg_hba.conf
+
 ENV PGDATA=$PGHOME/data
-COPY postgresql.conf /etc/postgresql/15/main/conf.d/local.conf
-RUN chown postgres:postgres /etc/postgresql/15/main/conf.d/local.conf
-RUN sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.conf
-USER postgres
-# allow DB access from webapp between containers
-RUN echo "host glamr glamr_django glamr-webapp trust" >> /etc/postgresql/15/main/pg_hba.conf
-# allow SSL+password for development:
-RUN echo "hostssl all all all scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf
 
+USER postgres
+WORKDIR $PGHOME
 EXPOSE 5432/tcp
 HEALTHCHECK CMD ["pg_isready"]
 STOPSIGNAL SIGINT
