@@ -1,16 +1,16 @@
 version: "3"
 services:
-  apache2:
-    image: glamr.apache2
+  www:
+    image: glamr.www
     depends_on:
-      - webapp
+      - glamr-webapp
     restart: always
     ports:
       # port 8080 on host on all interfaces
-      - 8080:80
+      - 8080:8080
     volumes:
-      - static:/glamr/static:ro
-  webapp:
+      - static:/glamr-webapp/static:ro
+  glamr-webapp:
     image: glamr.webapp
     depends_on:
       - database

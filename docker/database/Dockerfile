@@ -32,7 +32,7 @@ RUN chown postgres:postgres /etc/postgresql/15/main/conf.d/local.conf
 RUN sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.conf
 USER postgres
 # allow DB access from webapp between containers
-RUN echo "host glamr glamr_django glamr_webapp_1.glamr_default trust" >> /etc/postgresql/15/main/pg_hba.conf
+RUN echo "host glamr glamr_django glamr-webapp trust" >> /etc/postgresql/15/main/pg_hba.conf
 # allow SSL+password for development:
 RUN echo "hostssl all all all scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf
 

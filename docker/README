@@ -8,7 +8,7 @@ run-recover-staging script.
 
 To build container images, run:
 
-docker build --tag glamr.apache2 apache2/
+docker build --tag glamr.www www/
 docker build --tag glamr.webapp webapp/
 docker build --tag glamr.database database/
 docker build --tag glamr.recover-staging recover-staging/

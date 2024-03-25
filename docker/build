@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+docker build --tag glamr.www www/
+docker build --tag glamr.webapp webapp/
+docker build --tag glamr.database database/
