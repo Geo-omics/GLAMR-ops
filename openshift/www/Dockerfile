@@ -29,8 +29,8 @@ RUN a2enmod remoteip
 
 RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
     && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
-    && chown -R apache:root /var/log/apache2 \
-    && echo "ServerName greatlakesomics.org" >> /etc/apache2/apache2.conf
+    && echo "ServerName greatlakesomics.org" >> /etc/apache2/apache2.conf \
+    && chown -R apache:root /var/log/apache2
 
 ENV APACHE_RUN_USER apache
 ENV APACHE_RUN_GROUP root

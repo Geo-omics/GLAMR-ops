@@ -24,9 +24,9 @@ RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
 
-RUN      sed -i 's/80/8080/' /etc/apache2/ports.conf \
-      && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
-      && echo "ServerName glamr-staging.local" >> /etc/apache2/apache2.conf
+RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
+    && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
+    && echo "ServerName glamr-staging.local" >> /etc/apache2/apache2.conf
 
 ENV APACHE_RUN_USER www-data
 ENV APACHE_RUN_GROUP www-data
