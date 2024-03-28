@@ -111,3 +111,6 @@ ls -1rt "$DESTDIR"/access*.log | tail -n8 | head -n7 | xargs cat | remove-bots |
 cat "$DESTDIR"/access.*.log | remove-bots | make-html "All-time report"
 cat "$DESTDIR"/access.*.log | make-html "All-time with bots and everything" --no-ignore-crawlers
 cat "$DESTDIR"/access.*.log | make-html "All-time bots only" --no-ignore-crawlers --crawlers-only
+
+# Create outtage plots
+update-glamr-outage --plot-missed-probes -o "$HTML_DIR" "$DESTDIR"/access.*.log

@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""
+Generate a outage report for greatlakesomics.org from apache "combined" log
+files.
+"""
+import argparse
+from datetime import datetime, timedelta
+from itertools import pairwise
+import re
+import sys
+
+import pandas
+
+
+# values below are times in seconds
+DEFAULT_CUTOFF = 90
+WEBAPP_CUTOFF = 300
+PROBE_INTERVAL = 10
+
+
+argp = argparse.ArgumentParser(description=__doc__)
+argp.add_argument(
+    'logs',
+    nargs='+',
+    help='apache access log files, combined format',
+)
+argp.add_argument(
+    '-o', '--output-dir',
+    default='.',
+    help='Directory to which plots will be save',
+)
+argp.add_argument(
+    '--webapp',
+    action='store_true',
+    help=f'Webapp-only mode.  Ignore webserver probes and report outtages '
+         f'longer than {WEBAPP_CUTOFF}s.  In normal mode webserver probes are '
+         f'included in the analysis and outages larser than {DEFAULT_CUTOFF}s '
+         f'are reported.',
+)
+argp.add_argument(
+    '--plot-missed-probes',
+    action='store_true',
+    help='Make a plot of when probes were missed',
+)
+args = argp.parse_args()
+
+if args.webapp:
+    cutoff = WEBAPP_CUTOFF
+else:
+    cutoff = DEFAULT_CUTOFF
+
+
+def read_logs():
+    log_item_pat = {
+        'host': r'[.0-9]+',
+        'l': r'[^ ]+',
+        'u': r'[^ ]+',
+        'timestamp': r'\[([^\]]+)\]',
+        'request': r'"[^"]+"',
+        'status': r'[0-9]+',
+        'bytes': r'[0-9]+',
+        'referer': r'"[^"]*"',
+        'user_agent': r'"[^"]+"',
+    }
+    logpat = (
+        '^'
+        + ' '.join((f'(?P<{k}>{v})' for k, v in log_item_pat.items()))
+        + '$'
+    )
+    logpat = re.compile(logpat)
+
+    points = []
+    probes = []
+    for i in args.logs:
+        with open(i) as ifile:
+            for lnum, line in enumerate(ifile, start=1):
+                line = line.rstrip('\n')
+                m = logpat.match(line)
+                if m is None:
+                    print(f'log parsing error in {ifile.name} at line {lnum}: '
+                          f'{line}', file=sys.stderr)
+                    continue
+
+                dt = datetime.strptime(
+                    m['timestamp'],
+                    '[%d/%b/%Y:%H:%M:%S %z]'
+                )
+
+                if m['user_agent'].startswith('"kube-probe/'):
+                    if args.plot_missed_probes:
+                        probes.append(dt.astimezone())
+
+                    if args.webapp:
+                        # don't keep probes in webapp mode
+                        continue
+
+                points.append(dt.astimezone())
+    return points, probes
+
+
+def plot_missing_probes(probes):
+    timestamps = []
+    flags = []
+    probe_interval = timedelta(seconds=PROBE_INTERVAL)
+    probes = sorted(probes)
+    for a, b in pairwise(probes):
+        if a == b:
+            # ignore duplicates
+            continue
+
+        delay = (b - a) - probe_interval
+
+        if delay.total_seconds() < 0:
+            # negative lag is more than expected interval
+            # probes coming too quickly, resetting
+            delay = timedelta(0)
+
+        missed_count = int(delay.total_seconds()) // PROBE_INTERVAL
+
+        probe_dt = a
+        timestamps.append(probe_dt)
+        flags.append(0)  # 0 for good probe
+        for i in range(1, missed_count + 1):
+            probe_dt = probe_dt + probe_interval
+            timestamps.append(probe_dt)
+            flags.append(1)  # 1 for missed probe
+
+    df = pandas.DataFrame(
+        {'flag': flags},
+        timestamps,
+    )
+    # Make the plots' y-axis values: These are mean probe failure rate over a
+    # time-window.  The window size is determined by what the plot can resolve.
+    # So for the daily plot this is about one pixel per minute.  For a probe
+    # interval of 10s we get six probes per minute, so a window size of 6.
+    # Window size then scales proportional with temporal lenght of the plot.
+    df['per_1min'] = df['flag'].rolling(window=6, center=True).mean()
+    df['per_10min'] = df['flag'].rolling(window=60, center=True).mean()
+    df['per_hour'] = df['flag'].rolling(window=360, center=True).mean()
+
+    # yesterday outage plotting
+    now = pandas.Timestamp.now(tz=df.index[-1].tzinfo)
+    day = pandas.Timedelta(days=1)
+    a_day_ago = (now - day).replace(hour=0, minute=0, second=0, microsecond=0)
+    ax = df[df.index > a_day_ago]['per_1min'].plot()
+    ax.set_title('Outage since yesterday')
+    ax.set_yscale('log')
+    ax.figure.set_tight_layout(True)  # affects other figures below
+    ax.figure.set_size_inches(15, 3)  # affects other figures below
+    ax.figure.savefig(f'{args.output_dir}/outage_day.svg')
+    ax.cla()
+
+    # last week outage plotting
+    now = pandas.Timestamp.now(tz=df.index[-1].tzinfo)
+    week = pandas.Timedelta(days=7)
+    seven_days_ago = (now - week).replace(hour=0, minute=0, second=0, microsecond=0)  # noqa:E501
+    ax = df[df.index > seven_days_ago]['per_10min'].plot()
+    ax.set_title('Outage last 7 days')
+    ax.set_yscale('log')
+    ax.figure.savefig(f'{args.output_dir}/outage_week.svg')
+    ax.cla()
+
+    # all-time outage plotting
+    ax = df['per_hour'].plot()
+    ax.set_title('All-time Outage')
+    ax.set_yscale('log')
+    ax.figure.savefig(f'{args.output_dir}/outage_all.svg')
+    ax.cla()
+
+    # df.to_csv('probe_data.csv', sep='\t')
+    argp.exit(0)
+
+
+# main
+points, probes = read_logs()
+if args.plot_missed_probes:
+    plot_missing_probes(probes)
+
+for a, b in pairwise(sorted(points)):
+    diff = int((b - a).total_seconds())
+    if diff > cutoff:
+        print(f'{diff:>5}: {a} ... {b}')
