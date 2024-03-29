@@ -10,6 +10,7 @@ services:
       - 8080:8080
     volumes:
       - static:/glamr-webapp/static:ro
+      - /usr/local/etc/glamr-staging-www-secrets:/secrets:ro
   glamr-webapp:
     image: glamr.webapp
     depends_on:

@@ -19,6 +19,7 @@ RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --
 COPY 000-default.conf /etc/apache2/sites-available/
 COPY robots.txt /var/www/html/
 
+RUN ln -s /secrets/passwords /etc/apache2/passwords
 RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
