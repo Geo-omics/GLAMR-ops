@@ -5,7 +5,7 @@ USER root
 
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
-RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
+RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
     bind9-dnsutils \
     curl \
     apache2 \

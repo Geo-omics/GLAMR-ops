@@ -1,7 +1,7 @@
 FROM image-registry.openshift-image-registry.svc:5000/openshift/debian:bookworm-slim
 ARG DEBIAN_FRONTEND=noninteractive
 
-# USER root
+USER root
 
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
@@ -23,6 +23,7 @@ RUN adduser --system --no-create-home --uid $APPLICATION_USER_ID --ingroup root 
 COPY 000-default.conf /etc/apache2/sites-available/
 COPY robots.txt /var/www/html/
 
+RUN ln -s /apache24-authuserfile/authuserfile /etc/apache2/passwords
 RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
