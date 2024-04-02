@@ -1,5 +1,14 @@
 #!/bin/bash
 set -e
-docker build --tag glamr.www www/
-docker build --tag glamr.webapp webapp/
-docker build --tag glamr.database database/
+
+if [[ "$#" -eq 0 ]]; then
+    NAMES=(www webapp database)
+elif [[ "$#" -eq 1 ]]; then
+    NAMES=("$1")
+else
+    echo >&2 "bad cmd line options"
+fi
+
+for i in "${NAMES[@]}"; do
+    docker build --tag glamr."$i" "$i"/
+done
