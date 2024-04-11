@@ -146,7 +146,7 @@ def plot_missing_probes(probes):
     ax.set_title('Outage since yesterday')
     ax.set_yscale('log')
     ax.figure.set_tight_layout(True)  # affects other figures below
-    ax.figure.set_size_inches(15, 3)  # affects other figures below
+    ax.figure.set_size_inches(13, 3)  # affects other figures below
     ax.figure.savefig(f'{args.output_dir}/outage_day.svg')
     ax.cla()
 
