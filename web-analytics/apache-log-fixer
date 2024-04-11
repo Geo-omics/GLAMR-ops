@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""
+Fix corrupted apache "combined" log files
+
+This script is part of the GLAMR web analytics suite
+"""
+import argparse
+from pathlib import Path
+import os
+import re
+import shutil
+import sys
+from tempfile import NamedTemporaryFile
+
+
+argp = argparse.ArgumentParser(description=__doc__)
+argp.add_argument(
+    '--log-dir',
+    default=None,
+    help='Directory where to find apache logs, omitting this and the script '
+         'will process <stdin> and write to <stdou>',
+)
+args = argp.parse_args()
+
+log_item_pat = {
+    'host': r'[.0-9]+',
+    'l': r'[^ ]+',
+    'u': r'[^ ]+',
+    'timestamp': r'\[([^\]]+)\]',
+    'request': r'"[^"]+"',
+    'status': r'[0-9]+',
+    'bytes': r'[0-9]+',
+    'referer': r'"[^"]*"',
+    'user_agent': r'"[^"]+"',
+}
+pat = re.compile(' '.join((f'(?P<{k}>{v})' for k, v in log_item_pat.items())))
+
+
+def fix_file(ifile, ofile, efile):
+    fixed_something = False
+    log_name = Path(ifile.name).name
+    for lineno, line in enumerate(ifile, start=1):
+        line = line.rstrip()
+        if m := pat.search(line):
+            ofile.write(f'{m.group(0)}\n')
+            if m.start() != 0 or m.end() != len(line):
+                fixed_something = True
+                print(f'{log_name}:{lineno} Non-matching at start: '
+                      f'{m.start()}, at end: {len(line) - m.end()}',
+                      file=efile)
+
+        else:
+            fixed_something = True
+            print(f'{log_name}:{lineno} Bad line', file=efile)
+    return fixed_something
+
+
+if args.log_dir:
+    log_dir = Path(args.log_dir)
+
+    fixlog = log_dir / 'fix.log'
+    if fixlog.exists():
+        last_check = fixlog.stat().st_mtime
+    else:
+        last_check = -1
+
+    with open(fixlog, 'a') as efile:
+        for i in sorted(log_dir.glob('access.*.log')):
+            ifile_stats = i.stat()
+            if ifile_stats.st_mtime <= last_check:
+                continue
+
+            with NamedTemporaryFile('w', dir=log_dir) as ofile:
+                with open(i) as ifile:
+                    needs_save = fix_file(ifile, ofile, efile)
+
+                if needs_save:
+                    ofile.flush()
+                    # keep owners/mode like original file
+                    shutil.chown(ofile.name, user=i.owner(), group=i.group())
+                    os.chmod(ofile.name, mode=ifile_stats.st_mode)
+                    # atomic overwrite of existing file if all went well, the
+                    # rename will disappear the tempfile's name, so have to
+                    # stop the _closer from trying to unlink it.
+                    os.rename(ofile.name, i)
+                    ofile._closer.delete = False
+
+            # update fixlog's mtime so this access log can be skipped next time
+            fixlog.touch()
+
+else:
+    # stdin/out mode
+    fix_file(sys.stdin, sys.stdout, sys.stderr)

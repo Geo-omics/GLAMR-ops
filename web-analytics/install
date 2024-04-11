@@ -9,6 +9,7 @@ chown "$OPENSHIFT_USER" -- "$HTML_DIR"
 install --mode=644 index.html "$HTML_DIR"
 install --mode=755 update-glamr-web-analytics /usr/local/bin/
 install --mode=755 update-glamr-outage /usr/local/bin/
+install --mode=755 apache-log-fixer /usr/local/bin/
 
 
 mkdir -p -- "$VAR_DIR"

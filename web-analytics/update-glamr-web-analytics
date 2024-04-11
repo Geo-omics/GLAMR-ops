@@ -51,6 +51,7 @@ if $download; then
     fi
 fi
 
+apache-log-fixer --log-dir "$DESTDIR"
 
 function make-html () {
     title=$1
