@@ -44,7 +44,7 @@ cd "$VAR_DIR"
 if $download; then
     if [[ -x "$OPENSHIFT_APACHE_LOGS" ]]; then
         mkdir -p -- "$DESTDIR"
-        rsync -uv --dirs --no-perms --times "$OPENSHIFT_APACHE_LOGS"/ "$DESTDIR"
+        rsync -uv --dirs --chmod=F660 --times "$OPENSHIFT_APACHE_LOGS"/ "$DESTDIR"
         mv "$DESTDIR"/error.log "$VAR_DIR"/
     else
         echo >&2 "WARNING: can't access directory, skipping download: $OPENSHIFT_APACHE_LOGS"
