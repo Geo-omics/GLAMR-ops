@@ -90,7 +90,7 @@ def read_logs():
                 ).astimezone()
 
                 if m['user_agent'].startswith('"kube-probe/'):
-                    if args.plot_missed_probes:
+                    if args.plot:
                         probes.append(dt)
 
                     if args.webapp:
