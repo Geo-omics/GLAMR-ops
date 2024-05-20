@@ -113,5 +113,7 @@ cat "$DESTDIR"/access.*.log | remove-bots | make-html "All-time report"
 cat "$DESTDIR"/access.*.log | make-html "All-time with bots and everything" --no-ignore-crawlers
 cat "$DESTDIR"/access.*.log | make-html "All-time bots only" --no-ignore-crawlers --crawlers-only
 
+# Create query stats
+update-glamr-search-queries -o "$HTML_DIR/queries.html" "$DESTDIR"/access.*.log
 # Create outtage plots
 update-glamr-outage --plot -o "$HTML_DIR" "$DESTDIR"/access.*.log
