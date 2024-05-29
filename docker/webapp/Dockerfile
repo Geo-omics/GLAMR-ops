@@ -29,6 +29,7 @@ RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --
     iputils-ping \
     locales \
     memcached \
+    node-popper2 \
     postgresql-client \
     procps \
     python3-biopython \
