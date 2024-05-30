@@ -2,6 +2,9 @@
 Django settings specific for glarm test site on alpena
 """
 import os
+from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 from mibios.glamr.settings import *
 
@@ -84,3 +87,10 @@ if os.environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
     ENABLE_TEST_VIEWS = True
 if os.environ.get('DJANGO_DEBUG') == 'true':
     DEBUG = True
+
+try:
+    PUBLIC_DATA_ROOT = Path(os.environ['DJANGO_PUBLIC_DATA_ROOT'])
+    GLOBUS_DIRECT_URL_BASE = os.environ['DJANGO_GLOBUS_DIRECT_URL_BASE']
+    GLOBUS_FILE_APP_URL_BASE = os.environ['DJANGO_GLOBUS_FILE_APP_URL_BASE']  # noqa:E501
+except KeyError as e:
+    raise ImproperlyConfigured(str(e)) from e

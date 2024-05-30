@@ -23,6 +23,9 @@ services:
     environment:
       - DJANGO_DEBUG
       - DJANGO_ENABLE_TEST_VIEWS
+      - DJANGO_PUBLIC_DATA_ROOT
+      - DJANGO_GLOBUS_DIRECT_URL_BASE
+      - DJANGO_GLOBUS_FILE_APP_URL_BASE
   database:
     image: glamr.database
     restart: always
