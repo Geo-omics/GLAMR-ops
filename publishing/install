@@ -1,0 +1,18 @@
+#!/bin/bash
+set -eu
+
+trap 'rm -rf -- "$tmpd"' EXIT ERR
+
+DEST=${1:-/usr/local/lib/glamr-publishing}
+
+src=$(dirname "$0")
+tmpd=$(mktemp -d)
+
+cp -a "$src"/* "$tmpd"/
+
+(
+    cd "$tmpd"
+    sudo mkdir -p -- "$DEST"
+    sudo install --mode=755 make-backup restore psql copy "$DEST"
+    sudo install --mode=644 common.sh pg_hba.conf pg_local.conf "$DEST"
+)

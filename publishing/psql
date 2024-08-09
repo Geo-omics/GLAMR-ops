@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#
+# Run the populated pre-publication instance locally and start the psql client
+#
+
+# shellcheck disable=SC1091
+source ./common.sh
+
+# start db daemon
+run_cmd=("${common_run_cmd[@]}"
+    glamr.database
+    /usr/lib/postgresql/15/bin/postgres --config-file=/etc/postgresql/15/main/postgresql.conf -D "$DOCKER_PGDATA"
+)
+echo "${run_cmd[*]}"
+"${run_cmd[@]}" &
+
+# check if postgres is ready
+echo
+until sleep 1; docker exec -it "$DOCKER_NAME" pg_isready -U "$DBUSER"; do
+    :  # pass
+done
+
+docker exec -it "$DOCKER_NAME" psql "$DBNAME" || echo "WARNING: docker exec psql ... exit status: $?"
+docker exec "$DOCKER_NAME" bash -c "kill -INT 1"
+clean

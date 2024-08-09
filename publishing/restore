@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# This script will create a new database (cluster) instance locally and restore
+# the given backup to it.
+
+# shellcheck disable=SC1091
+source ./common.sh
+
+if [[ $# -eq 1 ]]; then
+    if [[ "$1" == 'prepare' ]]; then
+        echo "Will erase $PGHOME, press ^C to abort..."
+        read -r
+        sudo bash -c "rm -rf $PGHOME; rm -f $LOGFILE"
+        sudo mkdir -p "$PGHOME"
+        sudo touch "$LOGFILE"
+        sudo chmod 700 "$PGHOME"
+        sudo chmod 644 "$LOGFILE"
+        sudo chown postgres:postgres "$PGHOME" "$LOGFILE"
+        exit
+    fi
+else
+    err "usage: $0 <prepare|/path/to/dumpdir>"
+fi
+
+dumpdir=$(realpath "$1")
+[[ -d "$dumpdir" ]] || err "no such backup dump directory: $dumpdir"
+gen=${dumpdir##*.}
+[[ "$gen" =~ gen[0-9]+ ]] || err "error parsing generation from dumpdir: $gen"
+
+# Initialize database cluster
+# Will fail if data is not empty.
+init_cmd=("${common_run_cmd[@]}"
+    glamr.database
+    /usr/lib/postgresql/15/bin/initdb "$DOCKER_PGDATA"
+)
+echo "${init_cmd[*]}"
+"${init_cmd[@]}"
+clean  # clean to enable container name re-use
+
+# start db daemon
+run_cmd=("${common_run_cmd[@]}"
+    -v "$dumpdir:$DOCKER_DUMPDIR:ro"
+    glamr.database
+    /usr/lib/postgresql/15/bin/postgres --config-file=/etc/postgresql/15/main/postgresql.conf -D "$DOCKER_PGDATA"
+)
+echo "${run_cmd[*]}"
+"${run_cmd[@]}" &
+
+# check if postgres is ready
+echo
+until sleep 1; docker exec -it "$DOCKER_NAME" pg_isready; do
+    :  # pass
+done
+
+# run restore
+docker exec -it "$DOCKER_NAME" createuser --echo "$DBUSER"
+docker exec -it "$DOCKER_NAME" createdb --echo --owner "$DBUSER" "$DBNAME"
+SECONDS=0
+docker exec -it "$DOCKER_NAME" \
+    pg_restore \
+    --dbname="$DBNAME" \
+    --verbose \
+    -U postgres \
+    --exit-on-error \
+    --disable-triggers \
+    --no-owner \
+    --role "$DBUSER" \
+    --jobs 12 \
+    "$DOCKER_DUMPDIR" |& tee "${STORAGE}/pg_restore.${gen}.log"
+echo "restore done in ${SECONDS}s"
+# docker exec -it "$DOCKER_NAME" psql -c 'ANALYZE VERBOSE'
+docker stop --time 300 --signal SIGTERM "$DOCKER_NAME"

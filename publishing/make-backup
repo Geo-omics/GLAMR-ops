@@ -1,0 +1,29 @@
+#!/bin/bash
+# script to make backups of vondamm's staging glamr database
+# Run this on vondamm, use pg_dump version 15, needs db user password
+
+# shellcheck disable=SC1091
+source ./common.sh
+
+HOST=vondamm
+DBNAME=glamr
+
+[[ $(hostname) == "$HOST" ]] || err "run this on $HOST, please"
+
+[[ "$1" =~ gen[0-9]+ ]] || err "usage: $0 <genN>"
+gen=$1
+
+outdir=$STORAGE/"${DBNAME}.$(date +%Y%m%d-%H%M).$gen"
+echo "dumping to $outdir ..."
+
+comics nice time pg_dump \
+    --username=robert \
+    --host=localhost \
+    --port=54321 \
+    --format directory \
+    --file "$outdir" \
+    --verbose \
+    --jobs 8 \
+    "$DBNAME"
+
+chmod 775 -- "$outdir"

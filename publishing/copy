@@ -1,0 +1,63 @@
+#!/bin/bash
+set -eEu
+
+# shellcheck disable=SC1091
+source common.sh
+
+trap '' EXIT  # do not use clean from common.sh
+
+# User with access and ownership of production storage postgres data dir
+OPENSHIFT_USER=openshift-gdick-web-app
+# Paths at production storage (exported as they must be available under sudo)
+export TARGET_BASE=/nfs/turbo/lsa-gdick-openshift/postgres/data
+export CURRENT_SYMLINK=$TARGET_BASE/current
+export DATADIR_TEMPLATE=$TARGET_BASE/generation-
+export PGHOME
+
+[[ -z "$(ls -a1 ./run/.*PGSQL* 2>/dev/null)" ]] || err "socket file exists, postgres may still be running?"
+
+# make source readable, permission bits should be fine
+sudo chown -R "${OPENSHIFT_USER}:root" -- "$PGHOME"
+
+function check () {
+    set -eu
+    # Test if target storage looks as expected
+    [[ -d "$TARGET_BASE" ]] || err "no data directory: $TARGET_BASE"
+    [[ -L "$CURRENT_SYMLINK" ]] || err "no current symlink: $CURRENT_SYMLINK"
+    current=$(realpath -- "$CURRENT_SYMLINK")
+    [[ -d "$current" ]] || err "no current db data directory: $current"
+    [[ -d "$PGHOME" && -r "$PGHOME" ]] || err "source directory unreadable: $PGHOME"
+
+    df -h --output=source,used,avail,pcent "$(dirname "$TARGET_BASE")"
+    echo "                                                                         ^"
+    echo "source disk usage: $(du -hs "$PGHOME")              |"
+}
+sudo -u "$OPENSHIFT_USER" -E -- bash -c "$(declare -f check err); check"
+
+echo "DO WE HAVE SUFFICIENT STORAGE SPACE? Press <enter> or ^C  ---------------+"
+read -r || { echo "abort by user"; exit; }
+
+function prepare () {
+    set -eu
+    current=$(realpath -- "$CURRENT_SYMLINK")
+    generation=${current#"$DATADIR_TEMPLATE"}
+    echo >&2 "current generation: $generation"
+    next_generation=$((generation + 1))
+    echo >&2 "next generation: $next_generation"
+
+    # setup new data directory
+    next=$TARGET_BASE/generation-$next_generation
+    >&2 mkdir -v --mode 0700 -- "$next"
+    echo "$next"  # captured by caller
+}
+next=$(sudo -u "$OPENSHIFT_USER" -E -- bash -c "$(declare -f prepare err); prepare")
+echo "DB target: $next"
+
+# rsync source must have slash
+rsync_cmd=(sudo -u "$OPENSHIFT_USER" -- rsync -a --info=progress2 "$PGHOME/data/" "$next")
+echo "rsync command:"
+echo "${rsync_cmd[*]}"
+echo "Confirm running rsync by <enter> or abort by ^C "
+read -r || { echo "abort by user"; exit; }
+"${rsync_cmd[@]}"
+# TODO ln -sf ... next
