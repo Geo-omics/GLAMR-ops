@@ -3,27 +3,18 @@ set -eu
 PGBIN=/usr/lib/postgresql/15/bin
 
 echo "Running openshift build: ${OPENSHIFT_BUILD_NAME:-}"
-cd "$PGDATA_ROOT"
 
-if [[ -n ${PGDATA_NAME:-} ]]; then
-    PGDATA=$PGDATA_ROOT/$PGDATA_NAME
-    echo "As provided by runtime environment PGDATA=$PGDATA"
+# PGDATA_ROOT must be provided by Dockerfile
+# PGDATA_GENERATION is expected to be supplied via openshift Deployment runtime
+# environment, it should be an integer
+if [[ -n ${PGDATA_GENERATION:-} ]]; then
+    PGDATA=$PGDATA_ROOT/generation-$PGDATA_GENERATION
+    echo "Using PGDATA=$PGDATA"
 else
-    if [[ -L $PGDATA_ROOT/next ]]; then
-        # switch to next database generation
-        echo "Switching to next database generation..."
-        ln -v -sf -T "$(readlink current)" last
-        ln -v -sf -T "$(readlink next)" current
-    fi
-
-    if [[ -n ${USE_OLD_DATABASE:-} ]]; then
-        # use old database
-        PGDATA=$(realpath ./last)
-        echo "Using old PGDATA=$PGDATA"
-    else
-        PGDATA=$(realpath ./current)
-        echo "Using PGDATA=$PGDATA"
-    fi
+    # Last resort, use alphabetically last directory under PGDATA_ROOT, or, if
+    # no subdirectory exist at all, PGDATA_ROOT itself
+    PGDATA=$(find "$PGDATA_ROOT" -maxdepth 1 -type d | sort | tail -n1)
+    echo "[WARNING] PGDATA_GENERATION is not set, falling back to PGDATA=$PGDATA"
 fi
 
 [[ -d "$PGDATA" ]] || echo "WARNING: not a directory: PGDATA=$PGDATA"

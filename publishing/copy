@@ -60,4 +60,3 @@ echo "${rsync_cmd[*]}"
 echo "Confirm running rsync by <enter> or abort by ^C "
 read -r || { echo "abort by user"; exit; }
 "${rsync_cmd[@]}"
-# TODO ln -sf ... next

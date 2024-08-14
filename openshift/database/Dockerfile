@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install --assume-yes --no-install-recommends --qui
     curl \
     iproute2 \
     less \
-    nano\
+    nano \
     net-tools \
     postgresql-15 \
     procps
@@ -36,6 +36,8 @@ RUN     sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.
     && chown -R postgres:postgres /etc/postgresql/15/main/ \
     && chmod 640 /etc/postgresql/15/main/pg_hba.conf
 
+# PGDATA_ROOT: The directory containing one or more postgres data directories
+# (the generations).  It should be on the mounted database data volume.
 ENV PGDATA_ROOT=$PGHOME/pgdata_mnt/data
 
 USER postgres
