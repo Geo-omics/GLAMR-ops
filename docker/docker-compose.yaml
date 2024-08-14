@@ -35,7 +35,7 @@ services:
       - 54321:5432
     volumes:
       # permanent storage on host
-      - /ssd/glamr-db-staging:/var/local/postgresql
+      - /scratch/glamr-db-staging:/var/local/postgresql
 
 volumes:
   static:
