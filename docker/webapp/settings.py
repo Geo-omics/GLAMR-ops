@@ -1,7 +1,7 @@
 """
-Django settings specific for glarm test site on alpena
+Django settings specific for glamr test site on alpena
 """
-import os
+from os import environ
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -36,6 +36,7 @@ ADMINS = [("Robert", "heinro@umich.edu")]
 # For production, set STATIC_ROOT to the directory containing static files,
 # relative to your instance's base directory
 STATIC_ROOT = 'static'
+
 KRONA_CACHE_DIR = 'krona-cache/'
 
 # URL for static files
@@ -82,15 +83,16 @@ FORCE_SCRIPT_NAME = '/glamr'
 
 LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
 
+GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
+GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'
+
 # env override
-if os.environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
+if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
     ENABLE_TEST_VIEWS = True
-if os.environ.get('DJANGO_DEBUG') == 'true':
+if environ.get('DJANGO_DEBUG') == 'true':
     DEBUG = True
 
 try:
-    PUBLIC_DATA_ROOT = Path(os.environ['DJANGO_PUBLIC_DATA_ROOT'])
-    GLOBUS_DIRECT_URL_BASE = os.environ['DJANGO_GLOBUS_DIRECT_URL_BASE']
-    GLOBUS_FILE_APP_URL_BASE = os.environ['DJANGO_GLOBUS_FILE_APP_URL_BASE']  # noqa:E501
+    PUBLIC_DATA_ROOT = Path(environ['DJANGO_PUBLIC_DATA_ROOT'])
 except KeyError as e:
     raise ImproperlyConfigured(str(e)) from e

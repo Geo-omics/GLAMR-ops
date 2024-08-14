@@ -1,5 +1,5 @@
 """
-Django settings specific for glarm test site on alpena
+Django settings for production on greatlakesomics.org
 """
 from os import environ
 from mibios.glamr.settings import *
@@ -7,6 +7,9 @@ from mibios.glamr.settings import *
 
 # Set to True for development but never in production deployment
 DEBUG = False
+
+# No internal stuff
+INTERNAL_DEPLOYMENT = False
 
 # Set this to False when running the runserver command on localhost
 SECURE_SSL_REDIRECT = False
@@ -76,6 +79,9 @@ SCHEMA_PLOT_APPS = ['mibios_omics']
 
 STATICFILES_DIRS = ['static_var']
 LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
+
+GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
+GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'
 
 # env override
 if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
