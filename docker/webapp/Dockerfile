@@ -58,12 +58,14 @@ RUN echo "increment for mibios upgrade: 163"
 # anything.
 RUN python3.11 -m pip install --no-index --no-deps --break-system-packages --python /usr/bin/python3.11 git+https://github.com/Geo-omics/mibios.git@testing
 
-COPY uwsgi.ini /etc/uwsgi.ini
-
 # openshift must supply APPLICATION_USER_ID
 RUN addgroup --gid 555 $APP_GROUP
 RUN adduser --system --uid 555 --home=$APP_BASE_DIR --group $APP_USER
 RUN adduser $APP_USER root
+
+COPY uwsgi.ini /etc/uwsgi.ini
+RUN chown root:$APP_GROUP /etc/uwsgi.ini
+RUN chmod 640 /etc/uwsgi.ini
 
 WORKDIR ${APP_BASE_DIR}
 COPY settings.py start-webapp heavy_weight_reaper.py ./
