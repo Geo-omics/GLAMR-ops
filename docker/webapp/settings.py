@@ -19,7 +19,7 @@ INTERNAL_DEPLOYMENT = True
 SECURE_SSL_REDIRECT = False
 
 # Add additional apps here:
-INSTALLED_APPS.append('django_extensions')
+INSTALLED_APPS.append('django_extensions')  # noqa:F405
 
 # User switch magic: needs the remote user injection middleware and set
 # ASSUME_IDENTIY = ('alice', 'bob') so when user bob logs in through the web
@@ -59,13 +59,13 @@ DATABASES = {
 }
 
 # Allowed host settings:
-ALLOWED_HOSTS.append('127.0.0.1')
-ALLOWED_HOSTS.append('webapp')
-ALLOWED_HOSTS.append('vondamm.earth.lsa.umich.edu')
+ALLOWED_HOSTS.append('127.0.0.1')  # noqa:F405
+ALLOWED_HOSTS.append('webapp')  # noqa:F405
+ALLOWED_HOSTS.append('vondamm.earth.lsa.umich.edu')  # noqa:F405
 
 # Uncomment this do disable caching, for testing/debugging only
 # CACHES['default']['BACKEND'] = 'django.core.cache.backends.dummy.DummyCache'
-CACHES['default'] = {
+CACHES['default'] = {  # noqa:F405
     'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
     'LOCATION': '127.0.0.1:11211',
     'OPTIONS': {
@@ -84,7 +84,7 @@ FORCE_SCRIPT_NAME = '/glamr'
 LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
 
 GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
-GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'
+GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'  # noqa:E501
 
 # env override
 if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
