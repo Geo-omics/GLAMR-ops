@@ -74,11 +74,12 @@ RUN adduser $APP_USER root
 
 WORKDIR ${APP_BASE_DIR}
 COPY settings.py start-webapp heavy_weight_reaper.py ./
-RUN chmod 00644 heavy_weight_reaper.py ./
+RUN chmod 00755 start-webapp
+RUN chmod 00644 settings.py heavy_weight_reaper.py ./
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
 RUN mkdir static_var krona-cache static
 
 EXPOSE 3032/tcp
 HEALTHCHECK CMD echo | curl --silent telnet://127.0.0.1:9191 | grep -q accepting
-CMD sh -c "exec $APP_BASE_DIR/start-webapp"
+CMD ["./start-webapp"]
