@@ -59,8 +59,9 @@ RUN echo "increment for mibios upgrade: 163"
 RUN python3.11 -m pip install --no-index --no-deps --break-system-packages --python /usr/bin/python3.11 git+https://github.com/Geo-omics/mibios.git@testing
 
 # openshift must supply APPLICATION_USER_ID
+# docker gets hard-coded uid/gid
 RUN addgroup --gid 555 $APP_GROUP
-RUN adduser --system --uid 555 --home=$APP_BASE_DIR --group $APP_USER
+RUN adduser --system --home=$APP_BASE_DIR --group --uid 555 $APP_USER
 RUN adduser $APP_USER root
 
 COPY uwsgi.ini /etc/uwsgi.ini
