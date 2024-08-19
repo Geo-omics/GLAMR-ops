@@ -37,6 +37,7 @@ ADMINS = [("Robert", "heinro@umich.edu")]
 # relative to your instance's base directory
 STATIC_ROOT = 'static'
 
+# storing krona files on the static volume, may/should be created/maintained manually
 KRONA_CACHE_DIR = 'krona-cache/'
 
 # URL for static files
