@@ -57,7 +57,7 @@ RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen && update-locale
 ENV LANG=en_US.utf8
 
-RUN echo "increment for mibios upgrade: 147"
+RUN echo "increment for mibios upgrade: 163"
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
 # Also, currently, just "pip install" would install for python3.10, hence
@@ -73,7 +73,8 @@ RUN adduser --system --uid 555 --home=$APP_BASE_DIR --group $APP_USER
 RUN adduser $APP_USER root
 
 WORKDIR ${APP_BASE_DIR}
-COPY settings.py start-webapp ./
+COPY settings.py start-webapp heavy_weight_reaper.py ./
+RUN chmod 00644 heavy_weight_reaper.py ./
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
 RUN mkdir static_var krona-cache static
