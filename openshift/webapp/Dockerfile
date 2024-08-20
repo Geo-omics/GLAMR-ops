@@ -57,14 +57,19 @@ ENV LANG=en_US.utf8
 # anything.
 RUN python3.11 -m pip install --no-index --no-deps --break-system-packages --python /usr/bin/python3.11 git+https://github.com/Geo-omics/mibios.git
 
-COPY uwsgi.ini /etc/uwsgi.ini
-
 # openshift must supply APPLICATION_USER_ID
+# docker gets hard-coded uid/gid
 RUN adduser --system --home=$APP_BASE_DIR --group --uid $APPLICATION_USER_ID $APP_USER
 RUN adduser $APP_USER root
 
+COPY uwsgi.ini /etc/uwsgi.ini
+RUN chown root:$APP_GROUP /etc/uwsgi.ini
+RUN chmod 640 /etc/uwsgi.ini
+
 WORKDIR ${APP_BASE_DIR}
 COPY settings.py start-webapp ./
+RUN chmod 00755 start-webapp
+RUN chmod 00644 settings.py
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
 RUN mkdir static_var krona-cache static
@@ -74,4 +79,4 @@ RUN manage_mibios collectstatic --no-input
 
 EXPOSE 3032/tcp
 HEALTHCHECK CMD echo | curl --silent telnet://127.0.0.1:9191 | grep -q accepting
-CMD sh -c "exec $APP_BASE_DIR/start-webapp"
+CMD ["./start-webapp"]

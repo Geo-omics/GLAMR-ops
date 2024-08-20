@@ -15,7 +15,7 @@ INTERNAL_DEPLOYMENT = False
 SECURE_SSL_REDIRECT = False
 
 # Add additional apps here:
-INSTALLED_APPS.append('django_extensions')
+INSTALLED_APPS.append('django_extensions')  # noqa:F405
 
 # User switch magic: needs the remote user injection middleware and set
 # ASSUME_IDENTIY = ('alice', 'bob') so when user bob logs in through the web
@@ -33,7 +33,7 @@ ADMINS = [("Robert", "heinro@umich.edu")]
 # relative to your instance's base directory
 STATIC_ROOT = 'static'
 
-# storing krona files on the static volume, must be created/maintained manually
+# storing krona files on the static volume, may/should be created/maintained manually
 KRONA_CACHE_DIR = 'static/krona-cache/'
 
 # URL for static files
@@ -56,15 +56,15 @@ DATABASES = {
 }
 
 # Allowed host settings:
-ALLOWED_HOSTS.append('127.0.0.1')
-ALLOWED_HOSTS.append('webapp')
-ALLOWED_HOSTS.append('www-gdick-web-app.apps.gnosis.lsa.umich.edu')
-ALLOWED_HOSTS.append('glamr.earth.lsa.umich.edu')
-ALLOWED_HOSTS.append('greatlakesomics.org')
+ALLOWED_HOSTS.append('127.0.0.1')  # noqa:F405
+ALLOWED_HOSTS.append('webapp')  # noqa:F405
+ALLOWED_HOSTS.append('www-gdick-web-app.apps.gnosis.lsa.umich.edu')  # noqa:F405
+ALLOWED_HOSTS.append('glamr.earth.lsa.umich.edu')  # noqa:F405
+ALLOWED_HOSTS.append('greatlakesomics.org')  # noqa:F405
 
 # Uncomment this do disable caching, for testing/debugging only
 # CACHES['default']['BACKEND'] = 'django.core.cache.backends.dummy.DummyCache'
-CACHES['default'] = {
+CACHES['default'] = {  # noqa:F405
     'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
     'LOCATION': '127.0.0.1:11211',
     'OPTIONS': {
@@ -78,10 +78,10 @@ SITE_NAME_VERBOSE = 'GLAMR DB'
 SCHEMA_PLOT_APPS = ['mibios_omics']
 
 STATICFILES_DIRS = ['static_var']
-LOGGING['loggers']['django.template'] = {'handlers': ['null'], 'propagate': False, }
+LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa:F405
 
 GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
-GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'
+GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'  # noqa:E501
 
 # env override
 if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
