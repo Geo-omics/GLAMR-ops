@@ -6,7 +6,7 @@ files.
 import argparse
 from collections import Counter
 from datetime import datetime, timedelta
-from itertools import pairwise
+from itertools import chain, pairwise
 import re
 import sys
 
@@ -18,6 +18,9 @@ import pandas
 DEFAULT_CUTOFF = 90
 WEBAPP_CUTOFF = 300
 PROBE_INTERVAL = 10
+
+
+global args
 
 
 def read_logs():
@@ -103,7 +106,7 @@ def get_missed_probes(probes):
     return missed_timestamps
 
 
-def frame_data(hits, missed):
+def frame_data(hits, missed, uwsgi_hits):
     """
     Get our data into a DataFrame, indexed by every second
 
@@ -111,8 +114,8 @@ def frame_data(hits, missed):
     missed: list of datetimes (sorted, unique)
     """
     hits = sorted(hits)
-    start = min(hits[0], probes[0])
-    end = max(hits[-1], probes[-1])
+    start = min(hits[0], probes[0], uwsgi_hits[0])
+    end = max(hits[-1], probes[-1], uwsgi_hits[-1])
     start = start.astimezone(end.tzinfo)  # potential daylight savings
     seconds = pandas.date_range(start=start, end=end, freq='S')
     df = pandas.DataFrame(
@@ -126,6 +129,10 @@ def frame_data(hits, missed):
                 Counter(hits),
                 dtype=int,
             ).reindex(seconds, fill_value=0),
+            'uwsgi': pandas.Series(
+                Counter(uwsgi_hits),
+                dtype=int,
+            ).reindex(seconds, fill_value=0),
         },
         dtype=int,
         index=seconds,
@@ -133,11 +140,11 @@ def frame_data(hits, missed):
     return df
 
 
-def draw_plot(miss_data, hits_data, start, title, res, filename):
+def draw_plot(miss_data, hits_data, uwsgi_data, start, title, res, filename):
     """
     Plot one figure with matplotlib
 
-    miss_data, hits_data: Series
+    miss_data, hits_data, uwsgi_data: Series
     start: the first datetime of the interval to be plotted
     title: str, figure title
     res: missed probe rate resolution, str
@@ -145,6 +152,7 @@ def draw_plot(miss_data, hits_data, start, title, res, filename):
     """
     miss_data = miss_data[start <= miss_data.index]
     hits_data = hits_data[start <= hits_data.index]
+    uwsgi_data = uwsgi_data[start <= uwsgi_data.index]
     fig, ax = matplotlib.pyplot.subplots(1)
     ax.set_title(title)
     ax2 = ax.twinx()
@@ -154,7 +162,10 @@ def draw_plot(miss_data, hits_data, start, title, res, filename):
     else:
         logy = False
     hits_data[hits_data == 0] = None
-    hits_data.plot(ax=ax, logy=logy, style='-', color='C2', label='hits')
+    hits_data.plot(ax=ax, logy=logy, style='-', color='C2', label='httpd hits')
+
+    uwsgi_data[uwsgi_data == 0] = None
+    uwsgi_data.plot(ax=ax, logy=logy, style='-', color='C3', label='app hits')
 
     if miss_data.any():
         logy = True
@@ -163,7 +174,7 @@ def draw_plot(miss_data, hits_data, start, title, res, filename):
         # ax.set_ylim(ymin=0)
     miss_data[miss_data == 0] = None
     miss_data.plot(ax=ax2, logy=logy, color='C1',
-                   label='missed probes')
+                   label='missed httpd probes')
     # ylim: rate goes to 1.0, add a bit more to ensure a 1.0 line is visible
     ax2.set_ylim(ymax=1.1)
 
@@ -214,7 +225,12 @@ def plot_stuff(df):
     df['hits_s_10min'] = df['hits'].rolling(window=one_hour, center=True).sum() / (60 * 60)  # noqa: E501
     df['hits_s_1hour'] = df['hits'].rolling(window=one_hour * 6, center=True).sum() / (6 * 60 * 60)  # noqa: E501
 
-    df.to_csv('data.csv', sep='\t')
+    # 5. uwsgi hits per second, averaged over window, for each resolution
+    df['uwsgi_s_1min'] = df['uwsgi'].rolling(window=ten_mins, center=True).sum() / (5 * 60)  # noqa:E501
+    df['uwsgi_s_10min'] = df['uwsgi'].rolling(window=one_hour, center=True).sum() / (60 * 60)  # noqa: E501
+    df['uwsgi_s_1hour'] = df['uwsgi'].rolling(window=one_hour * 6, center=True).sum() / (6 * 60 * 60)  # noqa: E501
+
+    # df.to_csv('data.csv', sep='\t')
     now = pandas.Timestamp.now(tz=df.index[-1].tzinfo)
     last = df.index[-1]
 
@@ -231,6 +247,7 @@ def plot_stuff(df):
     draw_plot(
         df['miss_1min'],
         df['hits_s_1min'],
+        df['uwsgi_s_1min'],
         start,
         title=f'Outage since {day_label}',
         res='1 min',
@@ -249,6 +266,7 @@ def plot_stuff(df):
     draw_plot(
         df['miss_10min'],
         df['hits_s_10min'],
+        df['uwsgi_s_10min'],
         start,
         title=f'Outage {week_label}',
         res='10 mins',
@@ -259,11 +277,110 @@ def plot_stuff(df):
     draw_plot(
         df['miss_1hour'],
         df['hits_s_1hour'],
+        df['uwsgi_s_1hour'],
         df.index[0],
         title='All-time outage',
         res='1 h',
         filename='outage_all.svg',
     )
+
+# Example uwsgi log line:
+# {address space usage: 6204153856 bytes/5916MB} {rss usage: 4949364736
+# bytes/4720MB} [pid: 46|app: 0|req: 5/19] 10.131.2.1 () {72 vars in 1694
+# bytes} [Thu Aug 22 11:57:44 2024] GET
+# /filter/sample/?export=taxonabundance&filter-dataset_id=454&filter-sample_type=amplicon&page=9&sort=sample_name
+# => generated 75 bytes in 56898 msecs (HTTP/1.1 200) 8 headers in 275 bytes (2
+# switches on core 2)
+
+
+COMPONENTS = {
+    'CURLY': r'\{.*?\}',
+    'SQUARE': r'\[.*?\]',
+    'ROUND': r'\(.*?\)',
+    # FREE: no parentheses plus no space at beginning or end
+    'FREE': r'[^]()[{}\s][^]()[{}]*[^]()[{}\s]',
+}
+token_pat = re.compile(
+    '|'.join((f'(?P<{k}>{pat})' for k, pat in COMPONENTS.items()))
+)
+
+
+def uwsgi_tokenize(line):
+    """ parse components of uwsgi log line """
+    for m in token_pat.finditer(line):
+        yield m.lastgroup, m.group()
+
+
+def uwsgi_parse_log(line):
+    """
+    Parse a single log line
+
+    Return interesting bits as dict
+    """
+    data = {}
+    for key, txt in uwsgi_tokenize(line):
+        if key == 'FREE':
+            if ' => ' in txt:
+                meth, url, _ = txt.split(maxsplit=2)
+                path, _, qstr = url.partition('?')
+                if meth:
+                    data['meth'] = meth
+                if path:
+                    data['path'] = path
+                if qstr:
+                    data['qstr'] = path
+
+        else:
+            txt = txt[1:-1]  # strip off parentheses
+            if txt.startswith('HTTP/'):
+                _, _, status = txt.partition(' ')
+                try:
+                    status = int(status)
+                except ValueError as e:
+                    raise ValueError(
+                        f'expected numeric status code in: {line}'
+                    ) from e
+                else:
+                    data['status'] = status
+                    continue
+
+            try:
+                timestamp = datetime.strptime(txt, '%c').astimezone()
+            except ValueError:
+                # not a timestamp
+                for block in txt.split('|'):
+                    if ':' in block:
+                        key, _, value = block.partition(': ')
+                        data[key] = value
+                    else:
+                        pass
+            else:
+                # was timestamp
+                data['timestamp'] = timestamp
+    return data
+
+
+def uwsgi_timestamps(logfile):
+    """
+    get unix epoch timestamps + status from uwsgi request log
+    """
+    with open(logfile) as ifile:
+        for n, line in enumerate(ifile, start=1):
+            if data := uwsgi_parse_log(line):
+                yield data['timestamp'], data['status']
+            else:
+                print(f'ERR in {logfile} on line {n}')
+
+
+def get_uwsgi_data(*logfiles):
+    """
+    get data as iterable of timepoints of requests with good response
+
+    This can consume multiple files.
+    """
+    all_data = chain(*((uwsgi_timestamps(i) for i in logfiles)))
+    good_times = ((dt for dt, status in all_data if status < 400))
+    return sorted(good_times)
 
 
 if __name__ == '__main__':
@@ -272,6 +389,10 @@ if __name__ == '__main__':
         'logs',
         nargs='+',
         help='apache access log files, combined format',
+    )
+    argp.add_argument(
+        '--uwsgi-log',
+        help='uwsgi request log file',
     )
     argp.add_argument(
         '-o', '--output-dir',
@@ -299,10 +420,12 @@ if __name__ == '__main__':
         cutoff = DEFAULT_CUTOFF
 
     everything, hits, probes = read_logs()
+    uwsgi_hits = get_uwsgi_data(args.uwsgi_log)
     print(f'Got {len(hits)} hits, {len(probes)} probes')
     missed = get_missed_probes(probes)
-    data = frame_data(hits, missed)
+    data = frame_data(hits, missed, uwsgi_hits)
     print(f'Total time interval: {len(data.index)} seconds')
+    print(f'                     {data.index[0]} to {data.index[-1]}')
     if args.plot:
         plot_stuff(data)
 
