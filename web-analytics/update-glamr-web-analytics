@@ -120,4 +120,4 @@ cat "$DESTDIR"/access.*.log | make-html "All-time bots only" --no-ignore-crawler
 # Create query stats
 update-glamr-search-queries -o "$HTML_DIR/queries.html" "$DESTDIR"/access.*.log
 # Create outtage plots
-python3 update_glamr_outage.py --plot -o "$HTML_DIR" --uwsgi-log "$DESTDIR"/uwsgi_requests.log "$DESTDIR"/access.*.log
+update-glamr-outage --plot -o "$HTML_DIR" --uwsgi-log "$DESTDIR"/uwsgi_requests.log "$DESTDIR"/access.*.log
