@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eu
+
+LOGDIR=/webapp-logs
+
 echo "[$(date)] starting up glamr ..."
 memcached -d -m 64 -p 11211 -l 127.0.0.1
 manage_mibios collectstatic --no-input &
+# if log volume is mounted us it for logging
+[[ -d $LOGDIR && -w $LOGDIR ]] && ln -sf $LOGDIR/requests.log ./
 exec uwsgi --chdir "$APP_BASE_DIR" --ini /etc/uwsgi.ini
