@@ -20,38 +20,6 @@ WEBAPP_CUTOFF = 300
 PROBE_INTERVAL = 10
 
 
-argp = argparse.ArgumentParser(description=__doc__)
-argp.add_argument(
-    'logs',
-    nargs='+',
-    help='apache access log files, combined format',
-)
-argp.add_argument(
-    '-o', '--output-dir',
-    default='.',
-    help='Directory to which plots will be save',
-)
-argp.add_argument(
-    '--webapp',
-    action='store_true',
-    help=f'Webapp-only mode.  Ignore webserver probes and report outtages '
-         f'longer than {WEBAPP_CUTOFF}s.  In normal mode webserver probes are '
-         f'included in the analysis and outages larser than {DEFAULT_CUTOFF}s '
-         f'are reported.',
-)
-argp.add_argument(
-    '--plot',
-    action='store_true',
-    help='Make plots of hits and missing probes',
-)
-args = argp.parse_args()
-
-if args.webapp:
-    cutoff = WEBAPP_CUTOFF
-else:
-    cutoff = DEFAULT_CUTOFF
-
-
 def read_logs():
     log_item_pat = {
         'host': r'[.0-9]+',
@@ -298,20 +266,51 @@ def plot_stuff(df):
     )
 
 
-# main
-everything, hits, probes = read_logs()
-print(f'Got {len(hits)} hits, {len(probes)} probes')
-missed = get_missed_probes(probes)
-data = frame_data(hits, missed)
-print(f'Total time interval: {len(data.index)} seconds')
-if args.plot:
-    plot_stuff(data)
+if __name__ == '__main__':
+    argp = argparse.ArgumentParser(description=__doc__)
+    argp.add_argument(
+        'logs',
+        nargs='+',
+        help='apache access log files, combined format',
+    )
+    argp.add_argument(
+        '-o', '--output-dir',
+        default='.',
+        help='Directory to which plots will be save',
+    )
+    argp.add_argument(
+        '--webapp',
+        action='store_true',
+        help=f'Webapp-only mode.  Ignore webserver probes and report outtages '
+             f'longer than {WEBAPP_CUTOFF}s.  In normal mode webserver probes '
+             f'are included in the analysis and outages larser than '
+             f'{DEFAULT_CUTOFF}s are reported.',
+    )
+    argp.add_argument(
+        '--plot',
+        action='store_true',
+        help='Make plots of hits and missing probes',
+    )
+    args = argp.parse_args()
 
-shown_msg = False
-for a, b in pairwise(sorted(everything)):
-    diff = int((b - a).total_seconds())
-    if diff > cutoff:
-        if not shown_msg:
-            print('Probe gaps:')
-            shown_msg = True
-        print(f'{diff:>5}s: {a} ... {b}')
+    if args.webapp:
+        cutoff = WEBAPP_CUTOFF
+    else:
+        cutoff = DEFAULT_CUTOFF
+
+    everything, hits, probes = read_logs()
+    print(f'Got {len(hits)} hits, {len(probes)} probes')
+    missed = get_missed_probes(probes)
+    data = frame_data(hits, missed)
+    print(f'Total time interval: {len(data.index)} seconds')
+    if args.plot:
+        plot_stuff(data)
+
+    shown_msg = False
+    for a, b in pairwise(sorted(everything)):
+        diff = int((b - a).total_seconds())
+        if diff > cutoff:
+            if not shown_msg:
+                print('Probe gaps:')
+                shown_msg = True
+            print(f'{diff:>5}s: {a} ... {b}')
