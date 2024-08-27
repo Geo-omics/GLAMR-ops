@@ -74,6 +74,8 @@ CACHES['default'] = {  # noqa:F405
         'default_noreply': True,
     },
 }
+MIDDLEWARE.insert(0, 'django.middleware.cache.UpdateCacheMiddleware')
+MIDDLEWARE.append('django.middleware.cache.FetchFromCacheMiddleware')
 
 SITE_NAME = 'GLAMR'
 SITE_NAME_VERBOSE = 'GLAMR DB testing'
