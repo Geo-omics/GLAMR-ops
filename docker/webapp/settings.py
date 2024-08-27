@@ -28,6 +28,7 @@ INSTALLED_APPS.append('django_extensions')  # noqa:F405
 # ASSUME_IDENTITY = ('', 'bob') assume bob's identity.
 #
 #MIDDLEWARE = ['mibios.ops.utils.RemoteUserInjection'] + MIDDLEWARE
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
 #ASSUME_IDENTITY = ('', 'heinro')
 
 # List of contacts for site adminitrators
