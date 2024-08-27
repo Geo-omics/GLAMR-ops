@@ -1,0 +1,3 @@
+#!/bin/bash
+# get stats from memcached, press ^C to get back to shell
+{ echo -en "stats\r\n" >&3; cat <&3; } 3<> /dev/tcp/127.0.0.1/11211
