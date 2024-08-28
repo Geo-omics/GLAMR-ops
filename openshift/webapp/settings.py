@@ -24,6 +24,7 @@ INSTALLED_APPS.append('django_extensions')  # noqa:F405
 # ASSUME_IDENTITY = ('', 'bob') assume bob's identity.
 #
 #MIDDLEWARE = ['mibios.ops.utils.RemoteUserInjection'] + MIDDLEWARE
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
 #ASSUME_IDENTITY = ('', 'heinro')
 
 # List of contacts for site adminitrators
@@ -71,6 +72,8 @@ CACHES['default'] = {  # noqa:F405
         'default_noreply': True,
     },
 }
+MIDDLEWARE.insert(0, 'django.middleware.cache.UpdateCacheMiddleware')
+MIDDLEWARE.append('django.middleware.cache.FetchFromCacheMiddleware')
 
 SITE_NAME = 'GLAMR'
 SITE_NAME_VERBOSE = 'GLAMR DB'
