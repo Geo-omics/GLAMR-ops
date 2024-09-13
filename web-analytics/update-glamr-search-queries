@@ -50,6 +50,10 @@ for fname in args.access_logs:
             if not url.startswith('/search/'):
                 continue
 
+            if url == '/search/':
+                # is the normal search/filter page
+                continue
+
             path, _, querystr = url.partition('?')
             try:
                 _, scope = path.strip('/').split('/')
