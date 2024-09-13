@@ -367,7 +367,8 @@ def uwsgi_timestamps(logfile):
     with open(logfile) as ifile:
         for n, line in enumerate(ifile, start=1):
             if data := uwsgi_parse_log(line):
-                yield data['timestamp'], data['status']
+                # FIXME: what to do with no meth/url/proto lines
+                yield data['timestamp'], data.get('status', 200)
             else:
                 print(f'ERR in {logfile} on line {n}')
 
