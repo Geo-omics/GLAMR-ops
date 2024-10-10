@@ -72,7 +72,7 @@ RUN chmod 00755 start-webapp get-cache-stats
 RUN chmod 00644 settings.py heavy_weight_reaper.py
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
-RUN mkdir static_var krona-cache static
+RUN mkdir static_var krona-cache static log
 RUN ln -s /glamr-django-secret-key/django-secret-key secret.key
 
 RUN manage_mibios collectstatic --no-input

@@ -1,12 +1,21 @@
 #!/bin/bash
 set -eu
 
-LOGDIR=/webapp-logs
+LOGDIR=/persistent/log
 
 echo "[$(date)] starting up glamr ..."
 memcached -d -m 64 -p 11211 -l 127.0.0.1
 manage_mibios collectstatic --no-input &
 manage_mibios generate_model_graphs &
 # if log volume is mounted us it for logging
-[[ -d $LOGDIR && -w $LOGDIR ]] && ln -sf $LOGDIR/requests.log ./
+if [[ -d $LOGDIR && -w $LOGDIR ]]; then
+    # ./log in docker image assumed to be initially empty
+    if rmdir ./log && ln -s $LOGDIR ./log; then
+        echo "[$(date)] logging to persistent storage"
+    else
+        echo "[$(date)] ERROR check log directory"
+    fi
+else
+    echo "[$(date)] logs will be ephemeral"
+fi
 exec uwsgi --chdir "$APP_BASE_DIR" --ini /etc/uwsgi.ini
