@@ -26,6 +26,11 @@ services:
       - DJANGO_PUBLIC_DATA_ROOT
       - DJANGO_GLOBUS_DIRECT_URL_BASE
       - DJANGO_GLOBUS_FILE_APP_URL_BASE
+    healthcheck:
+      test: ["CMD", "/glamr-webapp/healthcheck"]
+      interval: 4s
+      timeout: 5s
+      retries: 2
   database:
     image: glamr.database
     restart: always

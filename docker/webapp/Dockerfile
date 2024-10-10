@@ -69,8 +69,8 @@ RUN chown root:$APP_GROUP /etc/uwsgi.ini
 RUN chmod 640 /etc/uwsgi.ini
 
 WORKDIR ${APP_BASE_DIR}
-COPY settings.py start-webapp heavy_weight_reaper.py get-cache-stats ./
-RUN chmod 00755 start-webapp get-cache-stats
+COPY settings.py start-webapp heavy_weight_reaper.py get-cache-stats healthtest ./
+RUN chmod 00755 start-webapp get-cache-stats healthtest
 RUN chmod 00644 settings.py heavy_weight_reaper.py
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP

@@ -1,0 +1,93 @@
+#!/usr/bin/python3
+import argparse
+from datetime import datetime, timedelta
+from io import SEEK_END
+import re
+import sys
+from urllib.request import urlopen
+
+
+# uwsgi request log
+REQUESTLOG = './log/requests.log'
+
+# time until failure
+TIME_CUTOFF = timedelta(minutes=10)
+
+# health test log
+LOGFILE = './log/webapp-health.log'
+
+# test requests
+TEST_URL = 'https://greatlakesomics.org/'
+
+
+def log(level, msg):
+    now = datetime.now().astimezone()
+    with open(LOGFILE, 'a') as ofile:
+        ofile.write(f'[{now}] [{level}] {msg}\n')
+
+
+def check_requestlog():
+    requestlog = open(REQUESTLOG)
+    requestlog.seek(0, SEEK_END)
+    pos = requestlog.tell()
+    # read through last 100k (about 250 requests)
+    requestlog.seek(max(0, pos - 100000))
+    requestlog.readline()  # discard first (likely) partial line
+
+    now = datetime.now().astimezone()
+    pat = re.compile(r'.* \[([^\]]+)\] GET /.* msecs \(([^\)]*)\)')
+
+    time = status = None
+    for line in requestlog:
+        m = pat.match(line)
+        if m is None:
+            continue
+
+        time, status = m.groups()
+        if not status.endswith(' 200'):
+            continue
+
+        time = datetime.strptime(time, '%c').astimezone()
+        delta = now - time
+        if delta < TIME_CUTOFF:
+            log('SUCCESS', f'healthy as of {delta} ago')
+            return True
+
+    requestlog.close()
+    if time is None:
+        log('FAIL', 'no matching log lines found')
+    else:
+        log('FAIL', f'last log: {time} status {status}')
+    return False
+
+
+def do_request():
+    resp = urlopen(TEST_URL)
+    if resp.status <= 399:
+        log('SUCCESS', f'test request status: {resp.status}')
+    else:
+        log('WARNING', f'test request status: {resp.status}')
+
+
+argp = argparse.ArgumentParser(description=__doc__)
+argp.add_argument(
+    '--never-fail',
+    action='store_true',
+    help='for testing, try to always return with zero exit code'
+)
+args = argp.parse_args()
+
+try:
+    success = check_requestlog()
+except Exception as e:
+    log('ERROR', f'internal error: {e.__class__.__name__}: {e}')
+    success = False
+finally:
+    if success:
+        sys.exit(0)
+    else:
+        try:
+            do_request()
+        except Exception as e:
+            log('ERROR', f'test request error: {e.__class__.__name__}: {e}')
+        sys.exit(0 if args.never_fail else 1)
