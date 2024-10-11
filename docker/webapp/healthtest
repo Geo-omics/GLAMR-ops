@@ -27,38 +27,44 @@ def log(level, msg):
 
 
 def check_requestlog():
-    requestlog = open(REQUESTLOG)
-    requestlog.seek(0, SEEK_END)
-    pos = requestlog.tell()
-    # read through last 100k (about 250 requests)
-    requestlog.seek(max(0, pos - 100000))
-    requestlog.readline()  # discard first (likely) partial line
+    with open(REQUESTLOG) as requestlog:
+        requestlog.seek(0, SEEK_END)
+        pos = requestlog.tell()
+        # read through last 100k (about 250 requests)
+        requestlog.seek(max(0, pos - 100000))
+        requestlog.readline()  # discard first (likely) partial line
 
-    now = datetime.now().astimezone()
-    pat = re.compile(r'.* \[([^\]]+)\] GET /.* msecs \(([^\)]*)\)')
+        now = datetime.now().astimezone()
+        pat = re.compile(r'.* \[([^\]]+)\] GET /.* msecs \(([^\)]*)\)')
 
-    time = status = None
-    for line in requestlog:
-        m = pat.match(line)
-        if m is None:
-            continue
+        time = status = None
+        good_delta = None
+        for line in requestlog:
+            m = pat.match(line)
+            if m is None:
+                continue
 
-        time, status = m.groups()
-        if not status.endswith(' 200'):
-            continue
+            time, status = m.groups()
+            if not status.endswith(' 200'):
+                continue
 
-        time = datetime.strptime(time, '%c').astimezone()
-        delta = now - time
-        if delta < TIME_CUTOFF:
-            log('SUCCESS', f'healthy as of {delta} ago')
-            return True
+            time = datetime.strptime(time, '%c').astimezone()
+            delta = now - time
+            if delta < TIME_CUTOFF:
+                if good_delta is None:
+                    good_delta = delta
+                else:
+                    good_delta = min(delta, good_delta)
 
-    requestlog.close()
-    if time is None:
-        log('FAIL', 'no matching log lines found')
+    if good_delta is None:
+        if time is None:
+            log('FAIL', 'no useful log lines found')
+        else:
+            log('FAIL', f'last log: {time} status {status}')
+        return False
     else:
-        log('FAIL', f'last log: {time} status {status}')
-    return False
+        log('SUCCESS', f'healthy as of {good_delta} ago')
+        return True
 
 
 def do_request():
