@@ -62,6 +62,9 @@ ALLOWED_HOSTS.append('webapp')  # noqa:F405
 ALLOWED_HOSTS.append('www-gdick-web-app.apps.gnosis.lsa.umich.edu')  # noqa:F405
 ALLOWED_HOSTS.append('glamr.earth.lsa.umich.edu')  # noqa:F405
 ALLOWED_HOSTS.append('greatlakesomics.org')  # noqa:F405
+# To make glamr.views.AddUserEmailView.get_email() get the our domain right:
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # Uncomment this do disable caching, for testing/debugging only
 # CACHES['default']['BACKEND'] = 'django.core.cache.backends.dummy.DummyCache'
