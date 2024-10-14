@@ -62,7 +62,7 @@ function make-html () {
     title=$1
     shift
     filename=$(echo "$title" | tr ' [:upper:]' '-[:lower:]').html
-    cmd=(goaccess - -a --log-format=COMBINED --html-report-title "$title" -o "$HTML_DIR/$filename" --browsers-file=/etc/goaccess/browsers.list)
+    cmd=(goaccess - -a --log-format=COMBINED --html-report-title "$title" -o "$HTML_DIR/$filename" --browsers-file=/etc/goaccess/browsers.list --no-parsing-spinner)
     bot_opt='--ignore-crawlers'
     opts=()
     while [[ $# -gt 0 ]]; do
