@@ -36,7 +36,6 @@ def check_requestlog():
         pos = requestlog.tell()
         # read through last 100k (about 250 requests)
         requestlog.seek(max(0, pos - 100000))
-        requestlog.readline()  # discard first (likely) partial line
 
         now = datetime.now().astimezone()
         pat = re.compile(r'.* \[([^\]]+)\] GET /.* msecs \(([^\)]*)\)')
@@ -80,7 +79,7 @@ def do_request():
         install_opener(build_opener(auth_handler))
 
     req = Request(TEST_URL, headers={'User-Agent': 'glamr-webapp-healthtest'})
-    resp = urlopen(req)
+    resp = urlopen(req, timeout=5)
     if resp.status <= 399:
         log('SUCCESS', f'test request status: {resp.status}')
     else:
