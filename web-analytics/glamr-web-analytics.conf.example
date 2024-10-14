@@ -12,5 +12,5 @@
 # Local username for user with access to OPENSHIFT_APACHE_LOGS
 #OPENSHIFT_USER=
 
-# Path where uwsgi stores it's requests log
-# OPENSHIFT_UWSGI_REQUEST_LOG=...
+# Path to other log files
+# OPENSHIFT_LOG_DIR=...

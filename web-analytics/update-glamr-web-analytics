@@ -50,9 +50,9 @@ if $download; then
     else
         echo >&2 "WARNING: can't access directory, skipping download: $OPENSHIFT_APACHE_LOGS"
     fi
-    if [[ -x "$OPENSHIFT_UWSGI_REQUEST_LOG" ]]; then
+    if [[ -x "$OPENSHIFT_LOG_DIR" ]]; then
         mkdir -p -- "$DESTDIR"
-        cp -pv -- "$OPENSHIFT_UWSGI_REQUEST_LOG" "$DESTDIR"/uwsgi_requests.log
+        rsync -uv --dirs --chmod=F660 --times "$OPENSHIFT_LOG_DIR"/ "$DESTDIR"
     fi
 fi
 
@@ -97,4 +97,4 @@ cat "$DESTDIR"/access.*.log | make-html "All-time bots only" --no-ignore-crawler
 # Create query stats
 update-glamr-search-queries -o "$HTML_DIR/queries.html" "$DESTDIR"/access.*.log
 # Create outtage plots
-update-glamr-outage --plot -o "$HTML_DIR" --uwsgi-log "$DESTDIR"/uwsgi_requests.log "$DESTDIR"/access.*.log
+update-glamr-outage --plot -o "$HTML_DIR" --uwsgi-log-base "$DESTDIR"/requests.log "$DESTDIR"/access.*.log

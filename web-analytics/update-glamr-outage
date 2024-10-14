@@ -7,6 +7,7 @@ import argparse
 from collections import Counter
 from datetime import datetime, timedelta
 from itertools import chain, pairwise
+from pathlib import Path
 import re
 import sys
 
@@ -373,12 +374,16 @@ def uwsgi_timestamps(logfile):
                 print(f'ERR in {logfile} on line {n}')
 
 
-def get_uwsgi_data(*logfiles):
+def get_uwsgi_data(log_base):
     """
     get data as iterable of timepoints of requests with good response
 
     This can consume multiple files.
     """
+    base = Path(log_base)
+    logfiles = []
+    for i in base.parent.glob(base.name + '*'):
+        logfiles.append(i)
     all_data = chain(*((uwsgi_timestamps(i) for i in logfiles)))
     good_times = ((dt for dt, status in all_data if status < 400))
     return sorted(good_times)
@@ -392,8 +397,8 @@ if __name__ == '__main__':
         help='apache access log files, combined format',
     )
     argp.add_argument(
-        '--uwsgi-log',
-        help='uwsgi request log file',
+        '--uwsgi-log-base',
+        help='uwsgi request log file(s) base path and name',
     )
     argp.add_argument(
         '-o', '--output-dir',
@@ -421,7 +426,7 @@ if __name__ == '__main__':
         cutoff = DEFAULT_CUTOFF
 
     everything, hits, probes = read_logs()
-    uwsgi_hits = get_uwsgi_data(args.uwsgi_log)
+    uwsgi_hits = get_uwsgi_data(args.uwsgi_log_base)
     print(f'Got {len(hits)} hits, {len(probes)} probes')
     missed = get_missed_probes(probes)
     data = frame_data(hits, missed, uwsgi_hits)
