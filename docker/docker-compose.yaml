@@ -26,10 +26,11 @@ services:
       - DJANGO_PUBLIC_DATA_ROOT
       - DJANGO_GLOBUS_DIRECT_URL_BASE
       - DJANGO_GLOBUS_FILE_APP_URL_BASE
+      - BASIC_AUTH_CREDENTIALS
     healthcheck:
-      test: ["CMD", "/glamr-webapp/healthcheck"]
-      interval: 4s
-      timeout: 5s
+      test: ["CMD", "/glamr-webapp/healthtest"]
+      interval: 60s
+      timeout: 10s
       retries: 2
   database:
     image: glamr.database
