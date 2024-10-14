@@ -2,9 +2,13 @@
 import argparse
 from datetime import datetime, timedelta
 from io import SEEK_END
+from os import environ
 import re
 import sys
-from urllib.request import urlopen
+from urllib.request import (
+    HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, Request,
+    build_opener, install_opener, urlopen,
+)
 
 
 # uwsgi request log
@@ -32,7 +36,6 @@ def check_requestlog():
         pos = requestlog.tell()
         # read through last 100k (about 250 requests)
         requestlog.seek(max(0, pos - 100000))
-        requestlog.readline()  # discard first (likely) partial line
 
         now = datetime.now().astimezone()
         pat = re.compile(r'.* \[([^\]]+)\] GET /.* msecs \(([^\)]*)\)')
@@ -68,7 +71,15 @@ def check_requestlog():
 
 
 def do_request():
-    resp = urlopen(TEST_URL)
+    if cred := environ.get('BASIC_AUTH_CREDENTIALS'):
+        user, _, passwd = cred.partition(' ')
+        pwmgr = HTTPPasswordMgrWithDefaultRealm()
+        pwmgr.add_password(None, TEST_URL, user, passwd)
+        auth_handler = HTTPBasicAuthHandler(pwmgr)
+        install_opener(build_opener(auth_handler))
+
+    req = Request(TEST_URL, headers={'User-Agent': 'glamr-webapp-healthtest'})
+    resp = urlopen(req, timeout=5)
     if resp.status <= 399:
         log('SUCCESS', f'test request status: {resp.status}')
     else:
