@@ -2,9 +2,6 @@
 Django settings specific for glamr test site on alpena
 """
 from os import environ
-from pathlib import Path
-
-from django.core.exceptions import ImproperlyConfigured
 
 from mibios.glamr.settings import *
 
@@ -103,7 +100,4 @@ if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':
 if environ.get('DJANGO_DEBUG') == 'true':
     DEBUG = True
 
-try:
-    PUBLIC_DATA_ROOT = Path(environ['DJANGO_PUBLIC_DATA_ROOT'])
-except KeyError as e:
-    raise ImproperlyConfigured(str(e)) from e
+# MIDDLEWARE = ['mibios.ops.utils.TraceMalloc'] + MIDDLEWARE
