@@ -1,5 +1,5 @@
 FROM debian:bookworm-slim
-ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 
@@ -9,7 +9,6 @@ RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get in
     bind9-dnsutils \
     curl \
     apache2 \
-    libapache2-mod-uwsgi \
     iproute2 \
     iputils-ping \
     net-tools \
