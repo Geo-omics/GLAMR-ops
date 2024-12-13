@@ -5,13 +5,15 @@ ARG APP_GROUP=webapp
 
 USER root
 
-ARG DEBIAN_FRONTEND=noninteractive 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 COPY etc/apt/preferences.d/10-no-sid /etc/apt/preferences.d/10-no-sid
 COPY etc/apt/preferences.d/20-python-crispy-bootstrap5 /etc/apt/preferences.d/20-python-crispy-bootstrap5
 COPY etc/apt/sources.list.d/sid.list /etc/apt/sources.list.d/sid.list
+COPY etc/apt/sources.list.d/backports.list /etc/apt/sources.list.d/backports.list
 
-RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
+RUN apt-get update --assume-yes --quiet && apt-get upgrade --assume-yes --quiet
+RUN apt-get install --assume-yes --quiet --no-install-recommends \
     adduser \
     bootstrap-icons \
     curl \
@@ -26,14 +28,7 @@ RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --
     postgresql-client \
     procps \
     python3-biopython \
-    python3-crispy-bootstrap5 \
     python3-defusedxml \
-    python3-django \
-    python3-django-crispy-forms \
-    python3-django-extensions \
-    python3-djangorestframework \
-    python3-django-filters \
-    python3-django-tables2 \
     python3-matplotlib \
     python3-pymemcache \
     python3-pandas \
@@ -49,6 +44,17 @@ RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --
 
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen && update-locale
 ENV LANG=en_US.utf8
+
+RUN apt-get install -t bookworm-backports --assume-yes --quiet --no-install-recommends \
+    python3-django
+
+RUN apt-get install --assume-yes --quiet --no-install-recommends \
+    python3-crispy-bootstrap5 \
+    python3-django-crispy-forms \
+    python3-django-extensions \
+    python3-djangorestframework \
+    python3-django-filters \
+    python3-django-tables2
 
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
@@ -74,8 +80,6 @@ RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
 RUN mkdir static_var krona-cache static log
 RUN ln -s /glamr-django-secret-key/django-secret-key secret.key
-
-RUN manage_mibios collectstatic --no-input
 
 EXPOSE 3032/tcp
 HEALTHCHECK CMD echo | curl --silent telnet://127.0.0.1:9191 | grep -q accepting
