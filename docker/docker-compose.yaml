@@ -11,6 +11,7 @@ services:
     volumes:
       - static:/glamr-webapp/static:ro
       - /usr/local/etc/glamr-staging-www-secrets:/secrets:ro
+      - /geomicro/data7/GLAMR-base/storage-local:/storage-local:ro
   glamr-webapp:
     image: glamr.webapp
     depends_on:

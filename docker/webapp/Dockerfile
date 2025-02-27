@@ -57,7 +57,7 @@ RUN apt-get install --assume-yes --quiet --no-install-recommends \
     python3-django-filters \
     python3-django-tables2
 
-RUN :  # increment for mibios upgrade: 225
+RUN :  # increment for mibios upgrade: 258
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
 # Also, currently, just "pip install" would install for python3.10, hence

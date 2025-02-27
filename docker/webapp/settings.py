@@ -93,6 +93,7 @@ LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa:F405
 
 GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
 GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'  # noqa:E501
+HTTPD_FILESTORAGE_ROOT = '/storage-local'
 
 # env override
 if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':

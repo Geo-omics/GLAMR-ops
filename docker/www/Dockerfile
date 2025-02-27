@@ -11,6 +11,7 @@ RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get in
     apache2 \
     iproute2 \
     iputils-ping \
+    libapache2-mod-xsendfile \
     net-tools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -22,6 +23,7 @@ RUN ln -s /secrets/passwords /etc/apache2/passwords
 RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
+RUN a2enmod xsendfile
 
 RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
     && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
