@@ -15,7 +15,7 @@ docker build --tag glamr.recover-staging recover-staging/
 
 To (re-)start the staging instance run, e.g.:
 
-COMPOSE_PROJECT_NAME=glamr docker-compose --env-file env.dev.txt up --detach
+COMPOSE_PROJECT_NAME=glamr docker compose --env-file env.dev.txt up --detach
 
 
 Initializing a database
