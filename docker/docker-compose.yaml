@@ -6,8 +6,8 @@ services:
       - glamr-webapp
     restart: always
     ports:
-      # port 8080 on host on all interfaces
-      - 8080:8080
+      # port 8080 on host on tunnel to reverse proxy
+      - 10.0.0.2:8080:8080/tcp
     volumes:
       - static:/glamr-webapp/static:ro
       - /usr/local/etc/glamr-staging-www-secrets:/secrets:ro
@@ -37,7 +37,7 @@ services:
     restart: always
     shm_size: 2gb
     ports:
-      # open port 54321 on all host interfaces
+      # open port 54321 on host (all interfaces)
       - 54321:5432
     volumes:
       # permanent storage on host
