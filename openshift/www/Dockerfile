@@ -26,6 +26,7 @@ RUN ln -s /apache24-authuserfile/authuserfile /etc/apache2/passwords
 RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
+RUN a2enmod log_forensic
 
 RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
     && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
