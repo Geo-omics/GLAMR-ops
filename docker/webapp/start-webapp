@@ -9,8 +9,8 @@ log () { echo "[$(date)] $*"; }
 log "starting up glamr ..."
 memcached -d -m 64 -p 11211 -l 127.0.0.1
 if [[ ! -e secret.key ]]; then
-    echo "No secret.key file:"
-    manage_mibios shell -c "from django.contrib.sessions.models import *; ret = Session.objects.all().delete(); print('Sessions deleted:', ret)"
+    log "No secret.key file found -- deleting old sessions..."
+    manage_mibios shell -c "from django.contrib.sessions.models import *; ret = Session.objects.all().delete(); print('Sessions deleted:', ret)" &
 fi
 manage_mibios collectstatic --no-input &
 manage_mibios generate_model_graphs &
