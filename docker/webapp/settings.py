@@ -3,7 +3,7 @@ Django settings specific for glamr test site on alpena
 """
 from os import environ
 
-from mibios.glamr.settings import *
+from mibios.glamr.settings import *  # noqa:F403
 
 
 # Set to True for development but never in production deployment
@@ -24,9 +24,7 @@ INSTALLED_APPS.append('django_extensions')  # noqa:F405
 # development, e.g. when using the shell or runserver commands let
 # ASSUME_IDENTITY = ('', 'bob') assume bob's identity.
 #
-#MIDDLEWARE = ['mibios.ops.utils.RemoteUserInjection'] + MIDDLEWARE
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
-#ASSUME_IDENTITY = ('', 'heinro')
 
 # List of contacts for site adminitrators
 ADMINS = [("Robert", "heinro@umich.edu")]
@@ -35,7 +33,8 @@ ADMINS = [("Robert", "heinro@umich.edu")]
 # relative to your instance's base directory
 STATIC_ROOT = 'static'
 
-# storing krona files on the static volume, may/should be created/maintained manually
+# storing krona files on the static volume, may/should be created/maintained
+# manually
 KRONA_CACHE_DIR = 'krona-cache/'
 
 # URL for static files
@@ -78,8 +77,8 @@ CACHES['default'] = {  # noqa:F405
         'default_noreply': True,
     },
 }
-MIDDLEWARE.insert(0, 'django.middleware.cache.UpdateCacheMiddleware')
-MIDDLEWARE.append('django.middleware.cache.FetchFromCacheMiddleware')
+MIDDLEWARE.insert(0, 'django.middleware.cache.UpdateCacheMiddleware')  # noqa:F405,E501
+MIDDLEWARE.append('django.middleware.cache.FetchFromCacheMiddleware')  # noqa:F405,E501
 
 SITE_NAME = 'GLAMR'
 SITE_NAME_VERBOSE = 'GLAMR DB testing'
