@@ -61,6 +61,7 @@ ALLOWED_HOSTS.append('127.0.0.1')  # noqa:F405
 ALLOWED_HOSTS.append('webapp')  # noqa:F405
 ALLOWED_HOSTS.append('vondamm.earth.lsa.umich.edu')  # noqa:F405
 ALLOWED_HOSTS.append('alpena.earth.lsa.umich.edu')  # noqa:F405
+CSRF_TRUSTED_ORIGINS = ['https://alpena.earth.lsa.umich.edu']
 
 # To make glamr.views.AddUserEmailView.get_email() get the our domain right:
 USE_X_FORWARDED_HOST = True
