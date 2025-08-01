@@ -8,7 +8,7 @@ USER root
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 COPY etc/apt/preferences.d/10-no-sid /etc/apt/preferences.d/10-no-sid
-COPY etc/apt/preferences.d/20-python-crispy-bootstrap5 /etc/apt/preferences.d/20-python-crispy-bootstrap5
+COPY etc/apt/preferences.d/20-from-sid /etc/apt/preferences.d/20-from-sid
 COPY etc/apt/sources.list.d/sid.list /etc/apt/sources.list.d/sid.list
 COPY etc/apt/sources.list.d/backports.list /etc/apt/sources.list.d/backports.list
 
@@ -23,6 +23,7 @@ RUN apt-get install --assume-yes --quiet --no-install-recommends \
     less \
     iproute2 \
     iputils-ping \
+    libjs-bootstrap5 \
     locales \
     memcached \
     node-popper2 \
@@ -57,7 +58,7 @@ RUN apt-get install --assume-yes --quiet --no-install-recommends \
     python3-django-filters \
     python3-django-tables2
 
-RUN :  # increment for mibios upgrade: 258
+RUN :  # increment for mibios upgrade: 263
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
 # Also, currently, just "pip install" would install for python3.10, hence
