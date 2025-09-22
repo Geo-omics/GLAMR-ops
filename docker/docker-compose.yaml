@@ -36,7 +36,7 @@ services:
   database:
     image: glamr.database
     restart: always
-    shm_size: 2gb
+    shm_size: 4gb
     ports:
       # open port 54321 on host (all interfaces)
       - 54321:5432
