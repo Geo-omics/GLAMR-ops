@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
@@ -29,12 +29,12 @@ RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
     && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \
     && echo "ServerName glamr-staging.local" >> /etc/apache2/apache2.conf
 
-ENV APACHE_RUN_USER www-data
-ENV APACHE_RUN_GROUP www-data
-# ENV APACHE_LOG_DIR /var/log/apache2
-# ENV APACHE_RUN_DIR /run
-# ENV APACHE_PID_FILE /run/apache2.pid
-ENV APACHE_ARGUMENTS -DFOREGROUND
+ENV APACHE_RUN_USER=www-data
+ENV APACHE_RUN_GROUP=www-data
+# ENV APACHE_LOG_DIR=/var/log/apache2
+# ENV APACHE_RUN_DIR=/run
+# ENV APACHE_PID_FILE=/run/apache2.pid
+ENV APACHE_ARGUMENTS=-DFOREGROUND
 
 # static content from webapp
 VOLUME /glamr-webapp/static/
