@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ARG PGHOME=/var/local/postgresql
 ARG POSTGRES_UID=121
@@ -25,16 +25,16 @@ RUN apt-get update && apt-get install --assume-yes --no-install-recommends --qui
     less \
     nano \
     net-tools \
-    postgresql-15 \
+    postgresql-17 \
     procps
 
 
-COPY pg_hba.conf /etc/postgresql/15/main/
-COPY local.conf /etc/postgresql/15/main/conf.d/
+COPY pg_hba.conf /etc/postgresql/17/main/
+COPY local.conf /etc/postgresql/17/main/conf.d/
 
-RUN    sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.conf \
-    && chown -R postgres:postgres /etc/postgresql/15/main/ \
-    && chmod 640 /etc/postgresql/15/main/pg_hba.conf
+RUN    sed -i '/^data_directory = / s/^/#/' /etc/postgresql/17/main/postgresql.conf \
+    && chown -R postgres:postgres /etc/postgresql/17/main/ \
+    && chmod 640 /etc/postgresql/17/main/pg_hba.conf
 
 ENV PGDATA=$PGHOME/data
 
@@ -43,4 +43,4 @@ WORKDIR $PGHOME
 EXPOSE 5432/tcp
 HEALTHCHECK CMD ["pg_isready"]
 STOPSIGNAL SIGINT
-CMD ["/usr/lib/postgresql/15/bin/postgres", "--config-file=/etc/postgresql/15/main/postgresql.conf"]
+CMD ["/usr/lib/postgresql/17/bin/postgres", "--config-file=/etc/postgresql/17/main/postgresql.conf"]
