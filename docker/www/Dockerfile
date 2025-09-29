@@ -5,6 +5,7 @@ USER root
 
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
+COPY update /
 RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
     bind9-dnsutils \
     curl \

@@ -8,7 +8,7 @@ USER root
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
-RUN :  # increment for system update: 1
+COPY update /
 RUN apt-get update --assume-yes --quiet && apt-get upgrade --assume-yes --quiet
 RUN apt-get install --assume-yes --quiet --no-install-recommends \
     adduser \
@@ -52,7 +52,7 @@ RUN apt-get install --assume-yes --quiet --no-install-recommends \
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen && update-locale
 ENV LANG=en_US.utf8
 
-RUN :  # increment for mibios upgrade: 265
+COPY latest /
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
 RUN python3 -m pip install --no-index --no-deps --no-build-isolation --break-system-packages git+https://github.com/Geo-omics/mibios.git@testing

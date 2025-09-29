@@ -7,6 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN ln -sf /usr/share/zoneinfo/America/Detroit /etc/localtime
 
+COPY update /
 # locale setup
 RUN apt-get update && apt-get upgrade --assume-yes --quiet && apt-get install --assume-yes --no-install-recommends --quiet \
     locales \

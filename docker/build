@@ -1,14 +1,51 @@
 #!/bin/bash
 set -e
 
-if [[ "$#" -eq 0 ]]; then
+echo "Build a container image for glamr staging instance:"
+echo
+echo "  www     : [1]"
+echo "  webapp  : [2]"
+echo "  webapp+ : [3]  (default)"
+echo "  database: [4]"
+echo "  ALL     : [5]"
+echo "  ALL+    : [6]"
+echo
+
+while true; do
+    read -p "Select an option: " -r choice
+    case $choice in
+        1) name=www; plus=false; break;;
+        2) name=webapp; plus=false; break;;
+        3 | "") name=webapp; plus=true; break;;
+        4) name=database; plus=false; break;;
+        5) name=all; plus=false; break;;
+        6) name=all; plus=true; break;;
+        *) name=; echo "Invalid choice";;
+    esac
+    [[ -n "$name" ]] && break
+done
+
+
+if [[ "$name" == "all" ]]; then
     NAMES=(www webapp database)
-elif [[ "$#" -eq 1 ]]; then
-    NAMES=("$1")
+    if $plus; then
+        now=$(date)
+        echo "$now" > ./www/update
+        echo "$now" > ./webapp/update
+        echo "$now" > ./database/update
+    fi
 else
-    echo >&2 "bad cmd line options"
+    NAMES=("$name")
+    if [[ "$name" == "webapp" && $plus ]]; then
+        git ls-remote --exit-code https://github.com/Geo-omics/mibios.git testing > ./webapp/latest
+    fi
 fi
 
 for i in "${NAMES[@]}"; do
     docker build --tag glamr."$i" "$i"/
 done
+
+echo "Restart containers with:"
+echo
+echo "  COMPOSE_PROJECT_NAME=glamr docker compose --env-file env.dev.txt up --detach"
+echo
