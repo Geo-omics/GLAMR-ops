@@ -16,7 +16,7 @@ gen=$1
 outdir=$STORAGE/"${DBNAME}.$(date +%Y%m%d-%H%M).$gen"
 echo "dumping to $outdir ..."
 
-comics nice time pg_dump \
+comics -B "$STORAGE" nice time -v pg_dump \
     --username=robert \
     --host=localhost \
     --port=54321 \
