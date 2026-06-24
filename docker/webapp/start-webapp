@@ -1,23 +1,14 @@
 #!/bin/bash
 set -eu
 
-LOGDIR=/persistent/log
+PERSISTENT_LOGDIR=/persistent/log
 
 log () { echo "[$(date)] $*"; }
 
-
-log "starting up glamr ..."
-memcached -d -m 64 -p 11211 -l 127.0.0.1
-if [[ ! -e secret.key ]]; then
-    log "No secret.key file found -- deleting old sessions..."
-    manage_mibios shell -c "from django.contrib.sessions.models import *; ret = Session.objects.all().delete(); print('Sessions deleted:', ret)" &
-fi
-manage_mibios collectstatic --no-input &
-manage_mibios generate_model_graphs &
 # if log volume is mounted use it for logging
-if [[ -d $LOGDIR && -w $LOGDIR ]]; then
+if [[ -d $PERSISTENT_LOGDIR && -w $PERSISTENT_LOGDIR ]]; then
     # ./log in docker image assumed to be initially empty
-    if rmdir ./log && ln -s $LOGDIR ./log; then
+    if rmdir ./log && ln -s $PERSISTENT_LOGDIR ./log; then
         log "logging to persistent storage"
     else
         log "ERROR check log directory"
@@ -25,4 +16,19 @@ if [[ -d $LOGDIR && -w $LOGDIR ]]; then
 else
     log "logs will be ephemeral"
 fi
+
+logfile=./log/log
+if touch $logfile; then
+    exec > >(tee -i "$logfile" -p --output-error=exit)
+    exec 2>&1
+fi
+
+log "starting up glamr ..."
+memcached -d -m 64 -p 11211 -l 127.0.0.1
+if [[ ! -e secret.key ]]; then
+    log "No secret.key file found -- deleting old sessions..."
+    manage-mibios shell -c "from django.contrib.sessions.models import *; ret = Session.objects.all().delete(); print('Sessions deleted:', ret)" &
+fi
+manage-mibios collectstatic --no-input --clear -v 2 &
+manage-mibios generate_model_graphs &
 exec uwsgi --chdir "$APP_BASE_DIR" --ini /etc/uwsgi.ini
