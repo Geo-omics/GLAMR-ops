@@ -69,4 +69,4 @@ docker exec -it "$DOCKER_NAME" \
     "$DOCKER_DUMPDIR" |& tee "${STORAGE}/pg_restore.${gen}.log"
 echo "restore done in ${SECONDS}s"
 # docker exec -it "$DOCKER_NAME" psql -c 'ANALYZE VERBOSE'
-docker stop --time 300 --signal SIGTERM "$DOCKER_NAME"
+docker stop --timeout 300 --signal SIGTERM "$DOCKER_NAME"

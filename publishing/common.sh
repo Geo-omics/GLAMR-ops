@@ -35,7 +35,7 @@ err () {
 
 clean () {
     echo "Cleaning up docker containers..."
-    docker stop --time 10 $DOCKER_NAME && docker rm $DOCKER_NAME || echo >&2 "docker stop fail"
+    docker stop --timeout 10 $DOCKER_NAME && docker rm $DOCKER_NAME || echo >&2 "docker stop fail"
     echo "[cleanup ok]"
 }
 
