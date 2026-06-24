@@ -42,8 +42,8 @@ clean () {
 common_run_cmd=(docker run
     --name "$DOCKER_NAME"
     -v "$PGHOME:$DOCKER_PGHOME"
-    -v "$BASE/pg_local.conf:/etc/postgresql/15/main/conf.d/local.conf"
-    -v "$BASE/pg_hba.conf:/etc/postgresql/15/main/local_hba.conf"
+    -v "$BASE/pg_local.conf:/etc/postgresql/17/main/conf.d/local.conf"
+    -v "$BASE/pg_hba.conf:/etc/postgresql/17/main/local_hba.conf"
     -v "$LOGFILE:$DOCKER_PGHOME/$(basename "$LOGFILE")"
     --shm-size=10g
 )

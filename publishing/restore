@@ -31,7 +31,7 @@ gen=${dumpdir##*.}
 # Will fail if data is not empty.
 init_cmd=("${common_run_cmd[@]}"
     glamr.database
-    /usr/lib/postgresql/15/bin/initdb "$DOCKER_PGDATA"
+    /usr/lib/postgresql/17/bin/initdb "$DOCKER_PGDATA"
 )
 echo "${init_cmd[*]}"
 "${init_cmd[@]}"
@@ -41,7 +41,7 @@ clean  # clean to enable container name re-use
 run_cmd=("${common_run_cmd[@]}"
     -v "$dumpdir:$DOCKER_DUMPDIR:ro"
     glamr.database
-    /usr/lib/postgresql/15/bin/postgres --config-file=/etc/postgresql/15/main/postgresql.conf -D "$DOCKER_PGDATA"
+    /usr/lib/postgresql/17/bin/postgres --config-file=/etc/postgresql/17/main/postgresql.conf -D "$DOCKER_PGDATA"
 )
 echo "${run_cmd[*]}"
 "${run_cmd[@]}" &

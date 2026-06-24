@@ -10,7 +10,7 @@ source ./common.sh
 # start db daemon
 run_cmd=("${common_run_cmd[@]}"
     glamr.database
-    /usr/lib/postgresql/15/bin/postgres --config-file=/etc/postgresql/15/main/postgresql.conf -D "$DOCKER_PGDATA"
+    /usr/lib/postgresql/17/bin/postgres --config-file=/etc/postgresql/17/main/postgresql.conf -D "$DOCKER_PGDATA"
 )
 echo "${run_cmd[*]}"
 "${run_cmd[@]}" &
