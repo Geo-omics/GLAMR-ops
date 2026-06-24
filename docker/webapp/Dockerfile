@@ -55,6 +55,7 @@ ENV LANG=en_US.utf8
 COPY latest /
 # this is Debian's pip so the below cmd line with --b-s-p will install mibios
 # (and nothing else) under /usr/local
+RUN python3 -m pip install --no-index --no-deps --no-build-isolation --break-system-packages git+https://github.com/Geo-omics/GLAMR_omics_pipelines.git@main
 RUN python3 -m pip install --no-index --no-deps --no-build-isolation --break-system-packages git+https://github.com/Geo-omics/mibios.git@testing
 
 # openshift must supply APPLICATION_USER_ID
