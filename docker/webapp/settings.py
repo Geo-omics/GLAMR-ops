@@ -86,7 +86,6 @@ SITE_NAME_VERBOSE = 'GLAMR DB testing'
 
 SCHEMA_PLOT_APPS = ['mibios_omics']
 
-STATICFILES_DIRS = ['static_var']
 FORCE_SCRIPT_NAME = '/glamr'
 
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa:F405
