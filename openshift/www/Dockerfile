@@ -1,4 +1,4 @@
-FROM image-registry.openshift-image-registry.svc:5000/openshift/debian:bookworm-slim
+FROM image-registry.openshift-image-registry.svc:5000/openshift/debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
@@ -12,6 +12,7 @@ RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get in
     apache2 \
     iproute2 \
     iputils-ping \
+    libapache2-mod-xsendfile \
     net-tools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -27,6 +28,7 @@ RUN a2enmod proxy
 RUN a2enmod proxy_uwsgi
 RUN a2enmod remoteip
 RUN a2enmod log_forensic
+RUN a2enmod xsendfile
 
 RUN    sed -i 's/80/8080/' /etc/apache2/ports.conf \
     && sed -i 's/ErrorLog\s*.*/ErrorLog \/dev\/stderr/' /etc/apache2/apache2.conf \

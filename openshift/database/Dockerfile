@@ -1,4 +1,4 @@
-FROM image-registry.openshift-image-registry.svc:5000/openshift/debian:bookworm-slim
+FROM image-registry.openshift-image-registry.svc:5000/openshift/debian:trixie-slim
 
 ARG PGHOME=/var/local/postgresql
 ARG DEBIAN_FRONTEND=noninteractive
@@ -24,17 +24,17 @@ RUN apt-get update && apt-get install --assume-yes --no-install-recommends --qui
     less \
     nano \
     net-tools \
-    postgresql-15 \
+    postgresql-17 \
     procps
 
 COPY start-database stop-database $PGHOME/
-COPY pg_hba.conf restore_mode.conf /etc/postgresql/15/main/
-COPY local.conf /etc/postgresql/15/main/conf.d/
+COPY pg_hba.conf restore_mode.conf /etc/postgresql/17/main/
+COPY local.conf /etc/postgresql/17/main/conf.d/
 
-RUN     sed -i '/^data_directory = / s/^/#/' /etc/postgresql/15/main/postgresql.conf \
-    && cp /etc/postgresql/15/main/postgresql.conf /etc/postgresql/15/main/postgresql_restore.conf \
-    && chown -R postgres:postgres /etc/postgresql/15/main/ \
-    && chmod 640 /etc/postgresql/15/main/pg_hba.conf
+RUN     sed -i '/^data_directory = / s/^/#/' /etc/postgresql/17/main/postgresql.conf \
+    && cp /etc/postgresql/17/main/postgresql.conf /etc/postgresql/17/main/postgresql_restore.conf \
+    && chown -R postgres:postgres /etc/postgresql/17/main/ \
+    && chmod 640 /etc/postgresql/17/main/pg_hba.conf
 
 # PGDATA_ROOT: The directory containing one or more postgres data directories
 # (the generations).  It should be on the mounted database data volume.

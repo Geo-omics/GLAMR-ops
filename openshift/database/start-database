@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eu
-PGBIN=/usr/lib/postgresql/15/bin
+PGBIN=/usr/lib/postgresql/17/bin
 
 echo "Running openshift build: ${OPENSHIFT_BUILD_NAME:-}"
 
@@ -20,4 +20,4 @@ fi
 [[ -d "$PGDATA" ]] || echo "WARNING: not a directory: PGDATA=$PGDATA"
 
 export PGDATA
-exec $PGBIN/postgres --config-file=/etc/postgresql/15/main/postgresql.conf
+exec $PGBIN/postgres --config-file=/etc/postgresql/17/main/postgresql.conf

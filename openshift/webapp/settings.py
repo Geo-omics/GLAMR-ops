@@ -67,6 +67,8 @@ CSRF_TRUSTED_ORIGINS = ['https://greatlakesomics.org']
 # To make glamr.views.AddUserEmailView.get_email() get the our domain right:
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+# And get proto right, too:
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Uncomment this do disable caching, for testing/debugging only
 # CACHES['default']['BACKEND'] = 'django.core.cache.backends.dummy.DummyCache'
@@ -85,11 +87,11 @@ SITE_NAME_VERBOSE = 'GLAMR DB'
 
 SCHEMA_PLOT_APPS = ['mibios_omics']
 
-STATICFILES_DIRS = ['static_var']
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa:F405
 
 GLOBUS_DIRECT_URL_BASE = 'https://g-61d4a3.a1bfb5.bd7c.data.globus.org'
 GLOBUS_FILE_APP_URL_BASE = 'https://app.globus.org/file-manager?origin_id=d16258fe-0228-449f-a70c-ae92e52b1464&origin_path=%2F'  # noqa:E501
+# HTTPD_FILESTORAGE_ROOT = '/storage-local'  # to be enabled later 
 
 # env override
 if environ.get('DJANGO_ENABLE_TEST_VIEWS') == 'true':

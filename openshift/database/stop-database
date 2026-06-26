@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run this script as container lifecycle preStop command.  
 set -eu
-PGBIN=/usr/lib/postgresql/15/bin
+PGBIN=/usr/lib/postgresql/17/bin
 
 echo "Attempting graceful shutdown..."
 cd "$PGDATA_ROOT"

@@ -1,4 +1,0 @@
-Explanation: default to bookworm, no unstable/sid
-Package: *
-Pin: release a=unstable
-Pin-Priority: -1
