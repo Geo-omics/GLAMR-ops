@@ -7,7 +7,7 @@ from time import sleep, monotonic
 import uwsgi
 
 VERBOSE = False
-LOG = 'reaper.log'
+LOG = './logs/reaper.log'
 MAX_MEMORY = 1_000_000_000
 WAIT_TIME = 60
 

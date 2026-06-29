@@ -12,13 +12,13 @@ from urllib.request import (
 
 
 # uwsgi request log
-REQUESTLOG = './log/requests.log'
+REQUESTLOG = './logs/requests.log'
 
 # time until failure
 TIME_CUTOFF = timedelta(minutes=10)
 
 # health test log
-LOGFILE = './log/webapp-health.log'
+LOGFILE = './logs/webapp-health.log'
 
 # test requests
 TEST_URL = 'https://greatlakesomics.org/'

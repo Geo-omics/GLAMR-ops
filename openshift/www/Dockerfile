@@ -55,6 +55,7 @@ RUN apache2ctl configtest
 RUN ls -la /var/run/apache2
 RUN chown -R apache:root /var/run/apache2
 RUN ls -la /var/lock/apache2 || true
+RUN mkdir /logs && chown apache /logs
 USER apache
 RUN id
 CMD ["apache2ctl", "start"]

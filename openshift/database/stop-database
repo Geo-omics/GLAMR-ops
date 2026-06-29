@@ -5,6 +5,6 @@ PGBIN=/usr/lib/postgresql/17/bin
 
 echo "Attempting graceful shutdown..."
 cd "$PGDATA_ROOT"
-echo -ne "\n$(date) shutdown " >> ../shutdown.log
+echo -ne "\n$(date) shutdown " >> /logs/shutdown.log
 $PGBIN/pg_ctl stop --wait --timeout=60 --mode=fast
-echo -n "[OK]" >> ../shutdown.log
+echo -n "[OK]" >> /logs/shutdown.log

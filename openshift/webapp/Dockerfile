@@ -71,7 +71,7 @@ RUN chmod 00755 start-webapp get-cache-stats healthtest
 RUN chmod 00644 settings.py heavy_weight_reaper.py
 RUN chmod ugo+rwx+t $APP_BASE_DIR
 USER $APP_USER:$APP_GROUP
-RUN mkdir krona-cache static log
+RUN mkdir krona-cache static logs
 RUN ln -s /glamr-django-secret-key/django-secret-key secret.key
 
 EXPOSE 3032/tcp
