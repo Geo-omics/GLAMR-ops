@@ -35,7 +35,8 @@ RUN     sed -i '/^data_directory = / s/^/#/' /etc/postgresql/17/main/postgresql.
     && cp /etc/postgresql/17/main/postgresql.conf /etc/postgresql/17/main/postgresql_restore.conf \
     && chown -R postgres:postgres /etc/postgresql/17/main/ \
     && chmod 640 /etc/postgresql/17/main/pg_hba.conf
-RUN mkdir /logs && chown postgres /logs
+
+RUN mkdir -p /pvlogs/postgres && chown postgres /pvlogs/postgres && ln -s /pvlogs/postgres /logs
 
 # PGDATA_ROOT: The directory containing one or more postgres data directories
 # (the generations).  It should be on the mounted database data volume.
