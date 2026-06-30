@@ -53,6 +53,9 @@ DATABASES = {
         'USER': 'glamr_django',
         'HOST': 'database.gdick-web-app.svc.cluster.local',
         'PORT': '5432',
+        'OPTIONS': {
+            'options': "-c statement_timeout=30000",  # 30s
+        }
     },
 }
 
