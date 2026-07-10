@@ -1,7 +1,12 @@
 #!/bin/bash
+#
+# Run this as root
+#
 set -eu
 
 CONFIG=/etc/glamr-web-analytics.conf
+
+[[ "$(hostname)" == alpena ]] || { echo >&2 "[ERROR] script must be run on alpena"; exit 1; }
 source $CONFIG || { echo >&2 "You need to manually set up the config file: $CONFIG"; exit 1; }
 
 mkdir -p -- "$HTML_DIR"
@@ -10,8 +15,9 @@ install --mode=644 index.html "$HTML_DIR"
 install --mode=755 update-glamr-web-analytics /usr/local/bin/
 install --mode=755 update-glamr-outage /usr/local/bin/
 install --mode=755 update-glamr-search-queries /usr/local/bin/
-install --mode=755 apache-log-fixer /usr/local/bin/
 
+# installs into /usr/local/lib/dist-packages:
+pip install --no-deps --no-build-isolation --no-index ./
 
 mkdir -p -- "$VAR_DIR"
 chown "$OPENSHIFT_USER":adm -- "$VAR_DIR"
