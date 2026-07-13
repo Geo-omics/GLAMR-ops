@@ -16,6 +16,8 @@ import shutil
 import sys
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+import pandas
+
 from glamr_ops import get_configuration
 from glamr_ops.utils import gzip
 
@@ -161,6 +163,9 @@ class LogEntries:
 class LogData:
     """ Count of hits between start and end date at one second resolution """
     data_file_pat = re.compile(r'(?P<year>[0-9]{4})-(?P<month>[0-9]{2}).json($|.gz)')
+    plot_width_in = 13  # plot width in inches
+    plot_height_in = 3  # plot height in inches
+    plot_dpi = 100  # DPI for plot
 
     def __init__(self, first_day=None, last_day=None, data_dir=None):
         if isinstance(first_day, str):
@@ -293,6 +298,41 @@ class LogData:
         suf = '.json.gz' if compressed else '.json'
         return (self.data_dir / stem).with_suffix(suf)
 
+    @property
+    def start(self):
+        """ Get first timestamp in the data """
+        for day, data in self.hits.items():
+            break
+        else:
+            raise ValueError('no data loaded')
+        first_sec = None
+        for status, counts in data.items():
+            for sec in counts.keys():
+                if first_sec is None or sec < first_sec:
+                    first_sec = sec
+                break
+
+        if first_sec is None:
+            raise RuntimeError('bad data? the status counts should not be empty')
+        return datetime(day.year, day.month, day.day) + timedelta(seconds=first_sec)
+
+    @property
+    def end(self):
+        """ Get last timestamp in the data """
+        if not self.hits:
+            raise ValueError('no data loaded')
+        for day, data in self.hits.items():
+            continue
+        last_sec = None
+        for status, counts in data.items():
+            for sec in counts.keys():
+                if last_sec is None or last_sec < sec:
+                    last_sec = sec
+
+        if last_sec is None:
+            raise RuntimeError('bad data? the status counts should not be empty')
+        return datetime(day.year, day.month, day.day) + timedelta(seconds=last_sec)
+
     @staticmethod
     def encode_counts(counts):
         """
@@ -358,6 +398,7 @@ class LogData:
         self.hits = {}
         self.import_state = {}
         self.loaded_data_files = {}
+        status_avail = set()
         for (y, m), path in self.get_data_files():
             if path.suffix == '.gz':
                 ifile = stdlib_gzip.open(path, 'rt')
@@ -390,7 +431,10 @@ class LogData:
                         for status, counts_data
                         in single_day_data.items()
                     }
+                    status_avail.update(self.hits[date].keys())
+
             self.loaded_data_files[(y, m)] = path
+            self.status_avail = sorted(status_avail, key=str)
             print('[OK]')
 
     def save_data(self):
@@ -511,6 +555,213 @@ class LogData:
             sorted_hits[date] = sorted_day_hits
 
         return sorted_hits
+
+    @staticmethod
+    def counts2list(index, counts_per_second):
+        """ turn counts per sec dict into a list """
+        for sec, timestamp in enumerate(index):
+            yield counts_per_second.get(sec, 0)
+
+    @staticmethod
+    def d2dt(date, seconds=0):
+        """
+        Utility to make a datetime from a date and number of seconds into the day
+        """
+        return datetime(date.year, date.month, date.day) + timedelta(seconds=seconds)
+
+    def by_status(self, status):
+        """
+        Generate counts for given status
+
+        This yields triplets (day, seconds, count)
+        """
+        for date, daydata in self.hits.items():
+            for sec, counts in daydata.get(status, {}).items():
+                yield date, sec, counts
+
+    def as_series(self, status, index=None):
+        """ Get pandas Series from given status data and interval """
+        if index is None:
+            index = pandas.date_range(
+                start=self.start,
+                end=self.end,
+                freq='S',
+                name='timestamp',
+            )
+
+        timestamped_counts = (
+            (self.d2dt(day, sec), count)
+            for day, sec, count in self.by_status(status)
+        )
+
+        def counts():
+            """
+            Concurrently iterate over index and count data, insert appropriate
+            missing values as needed
+            """
+            hold_counts = False
+            tstamp = count = None
+            for i in index:
+                if hold_counts:
+                    if i == tstamp:
+                        yield count
+                        hold_counts = False
+                    else:
+                        yield 0
+                else:
+                    for tstamp, count in timestamped_counts:
+                        if tstamp < i:
+                            # counts need to catch up to index
+                            continue
+                        elif tstamp == i:
+                            yield count
+                        else:
+                            # index needs to catch up to counts
+                            yield 0
+                            hold_counts = True
+                        break
+                    else:
+                        # all data younger than index or end of data, but index
+                        # continues
+                        yield 0
+                        hold_counts = True
+
+        return pandas.Series(counts(), index, name=str(status))
+
+    def as_dataframe(self, start, end):
+        if start is None:
+            start = self.start
+        if end is None:
+            end = self.end
+
+        print('Compiling dataframe... ', end='', flush=True)
+        index = pandas.date_range(start=start, end=end, freq='s', name='timestamp')
+        df = pandas.DataFrame(index=index, dtype=pandas.Int64Dtype())
+        for status in self.status_avail:
+            df[str(status)] = self.as_series(status, index)
+            print(status, end=' ', flush=True)
+        print('[OK]')
+        return df
+
+    def _plot(self, df):
+        """
+        Do common plotting stuff
+        """
+        # 0. resampling
+        # We're aiming for one datapoint per dot
+        rate = round(len(df) / (self.plot_dpi * self.plot_width_in))
+        print(f'Re-sampling at rate {rate}s ... ', end='', flush=True)
+        df = df.resample(timedelta(seconds=rate)).mean()
+        print('[OK]')
+
+        # 1. sum data into four columns
+        good_cols = [
+            str(i) for i in self.status_avail
+            if isinstance(i, int) and 200 <= i < 399 and str(i) in df.columns
+        ]
+        bad_cols = [
+            str(i) for i in self.status_avail
+            if isinstance(i, int) and 400 <= i < 499 and str(i) in df.columns
+        ]
+        err_cols = [
+            str(i) for i in self.status_avail
+            if isinstance(i, int) and 500 <= i < 599 and str(i) in df.columns
+        ]
+        other_cols = [
+            i for i in df.columns
+            if i not in good_cols + bad_cols + err_cols
+        ]
+        print('Summing columns by category... ', end='', flush=True)
+        df['good hits'] = df[good_cols].sum(axis=1)
+        df['bad hits'] = df[bad_cols].sum(axis=1)
+        df['errors'] = df[err_cols].sum(axis=1)
+        df['other'] = df[other_cols].sum(axis=1)
+        print('[OK]')
+
+        # 2. remove original columns
+        for i in df.columns:
+            if i not in ['good hits', 'bad hits', 'errors', 'other']:
+                del df[i]
+
+        # 3. assign colors to columns
+        color = (
+            'C2',  # green for good hits
+            'C1',  # orange for bad
+            'C3',  # red for errors
+            'C7',  # grey for others
+        )
+        ax = df.plot(
+            logy=True,
+            color=color,
+            linewidth=0.5,
+        )
+        ax.set_ylabel('hits per second')
+        ax.figure.set_tight_layout(True)
+        ax.figure.set_size_inches(self.plot_width_in, self.plot_height_in)
+        ax.figure.set_dpi(self.plot_dpi)
+        return ax
+
+    def plot_year(self, year=None):
+        if year is None:
+            year = self.last_day.year
+
+        start = datetime(year, 1, 1).astimezone()
+        end = datetime(year + 1, 1, 1).astimezone() - timedelta(seconds=1)
+
+        df = self.as_dataframe(start, end)
+
+        ax = self._plot(df)
+        ax.set_title(f'Hits for {year}')
+        outfile = f'{year}.png'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
+
+    def plot_month(self, year=None, month=None):
+        if month is None and month is not None:
+            raise ValueError('need a year if month is given')
+        if year is None:
+            year = self.last_day.year
+        if month is None:
+            month = self.last_day.month
+
+        start = datetime(year, month, 1)
+        end = datetime(year + 1 if month == 12 else year, (month + 1) % 12, 1) \
+            - timedelta(seconds=1)
+
+        df = self.as_dataframe(start, end)
+
+        ax = self._plot(df)
+        ax.set_title(f'Hits for {year}/{month}')
+        outfile = f'{year}-{month:02d}.png'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
+
+    def plot_week(self):
+        """ Plot for last seven days """
+        start = self.d2dt(datetime_date.today()) - timedelta(days=7)
+        end = datetime.now().astimezone()
+        df = self.as_dataframe(start, end)
+
+        ax = self._plot(df)
+        ax.set_title('Hits for last week')
+        outfile = 'week.png'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
+
+    def plot_yesterday(self):
+        """ Plot for all of yesterday until latest data """
+        start = self.d2dt(datetime_date.today()) - timedelta(days=1)
+        df = self.as_dataframe(start, self.end)
+
+        ax = self._plot(df)
+        ax.set_title('Hits since yesterday')
+        outfile = 'yesterday.png'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
 
 
 def fix_file(ifile, ofile, efile):
