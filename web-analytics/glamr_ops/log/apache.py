@@ -570,14 +570,45 @@ class LogData:
         t = datetime(date.year, date.month, date.day).astimezone()
         return t + timedelta(seconds=seconds)
 
-    def by_status(self, status):
+    def by_status(self, status, start=None, end=None):
         """
         Generate counts for given status
 
         This yields triplets (day, seconds, count)
         """
+        if start:
+            start_date = start.date()
+            start_sec = start.hour * 3600 + start.minute * 60 + start.second
+        else:
+            start_date = start_sec = None
+
+        if end:
+            end_date = end.date()
+            end_sec = end.hour * 3600 + end.minute * 60 + end.second
+        else:
+            end_date = end_sec = None
+
         for date, daydata in self.hits.items():
+            # get data for all seconds unless we're on the first or last day
+            min_sec = 0
+            max_sec = 86400
+            if start_date:
+                if date < start_date:
+                    continue
+                if start_date == date:
+                    min_sec = start_sec
+
+            if end_date:
+                if end_date < date:
+                    break
+                if date == end_date:
+                    max_sec = end_sec
+
             for sec, counts in daydata.get(status, {}).items():
+                if sec < min_sec:
+                    continue
+                if max_sec < sec:
+                    break
                 yield date, sec, counts
 
     def as_series(self, status, index=None):
@@ -592,7 +623,8 @@ class LogData:
 
         timestamped_counts = (
             (self.d2dt(day, sec), count)
-            for day, sec, count in self.by_status(status)
+            for day, sec, count
+            in self.by_status(status, start=index[0], end=index[-1])
         )
 
         def counts():
