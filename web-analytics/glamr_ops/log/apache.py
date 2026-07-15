@@ -314,7 +314,7 @@ class LogData:
 
         if first_sec is None:
             raise RuntimeError('bad data? the status counts should not be empty')
-        return datetime(day.year, day.month, day.day) + timedelta(seconds=first_sec)
+        return self.d2dt(day, first_sec)
 
     @property
     def end(self):
@@ -331,7 +331,7 @@ class LogData:
 
         if last_sec is None:
             raise RuntimeError('bad data? the status counts should not be empty')
-        return datetime(day.year, day.month, day.day) + timedelta(seconds=last_sec)
+        return self.d2dt(day, last_sec)
 
     @staticmethod
     def encode_counts(counts):
@@ -567,7 +567,8 @@ class LogData:
         """
         Utility to make a datetime from a date and number of seconds into the day
         """
-        return datetime(date.year, date.month, date.day) + timedelta(seconds=seconds)
+        t = datetime(date.year, date.month, date.day).astimezone()
+        return t + timedelta(seconds=seconds)
 
     def by_status(self, status):
         """
@@ -725,9 +726,12 @@ class LogData:
         if month is None:
             month = self.last_day.month
 
-        start = datetime(year, month, 1)
-        end = datetime(year + 1 if month == 12 else year, (month + 1) % 12, 1) \
-            - timedelta(seconds=1)
+        start = datetime(year, month, 1).astimezone()
+        end = datetime(
+            year + 1 if month == 12 else year,
+            (month + 1) % 12,
+            1
+        ).astimezone() - timedelta(seconds=1)
 
         df = self.as_dataframe(start, end)
 
