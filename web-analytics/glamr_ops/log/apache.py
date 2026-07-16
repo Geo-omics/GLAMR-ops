@@ -565,7 +565,7 @@ class LogData:
         Returns hits time series data structure
         """
         # 1. Collect and count hits per day per status per second
-        hits0 = defaultdict(lambda: defaultdict(Counter))
+        hits = defaultdict(lambda: defaultdict(Counter))
         for entry in log_entries:
             dt = entry.timestamp  # datetime
             date = dt.date()
@@ -580,24 +580,22 @@ class LogData:
 
             if entry.user_agent.startswith('kube-probe/'):
                 if 200 <= entry.status <= 299:
-                    hits0[date]['probe'][seconds] += 1
+                    hits[date]['probe'][seconds] += 1
                 elif 400 <= entry.status:
-                    hits0[date]['probe-fail'][seconds] += 1
+                    hits[date]['probe-fail'][seconds] += 1
                 continue
 
             else:
-                hits0[date][entry.status][seconds] += 1
+                hits[date][entry.status][seconds] += 1
 
-        # 2. Sort by day/status
-        sorted_hits = {}
-        for date, day_hits in sorted(hits0.items(), key=lambda x: x[0]):
-            sorted_day_hits = {}
-            for status, seconds_data in sorted(day_hits.items(), key=lambda x: str(x[0])):  # noqa:E501
-                sorted_day_hits[status] = \
-                    dict(sorted(seconds_data.items(), key=lambda x: x[0]))
-            sorted_hits[date] = sorted_day_hits
+        # 2. Sort by day/status/seconds
+        hits = sorted_keys(hits)
+        for date in hits.keys():
+            hits[date] = sorted_keys(hits[date], key=lambda x: str(x))
+            for status in hits[date].keys():
+                hits[date][status] = sorted_keys(hits[date][status])
 
-        return sorted_hits
+        return hits
 
     @staticmethod
     def counts2list(index, counts_per_second):
