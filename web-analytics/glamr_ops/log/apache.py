@@ -261,8 +261,8 @@ class LogData:
                 1
             ) - timedelta(days=1)  # 1st day of next month minus 1 day
             obj = cls(first_day, last_day, data_dir=data_dir)
-            obj.import_log_files(*logfile_batch)
-            obj.save_data(dry_run=dry_run)
+            if obj.import_log_files(*logfile_batch):
+                obj.save_data(dry_run=dry_run)
             objs.append(obj)
         return objs
 
@@ -512,6 +512,11 @@ class LogData:
             print('[OK]')
 
     def import_log_files(self, *logfiles):
+        """
+        Import data from given log files
+
+        Returns True if some new data was imported and False otherwise
+        """
         log_iters = [
             LogEntries(path, skip=self.import_state.get(path.name, 0))
             for path in logfiles
@@ -555,6 +560,8 @@ class LogData:
                     f'duplicate log import? {i.path=} {self.import_state=}'
                 )
             self.import_state[i.path.name] = i.total_lines
+
+        return bool(hits)
 
     def get_hits(self, log_entries):
         """
