@@ -707,8 +707,12 @@ class LogData:
     def as_dataframe(self, start, end):
         if start is None:
             start = self.start
+        elif isinstance(start, str):
+            start = datetime.fromisoformat(start).astimezone()
         if end is None:
             end = self.end
+        elif isinstance(end, str):
+            end = datetime.fromisoformat(end).astimezone()
 
         print('Compiling dataframe... ', end='', flush=True)
         index = pandas.date_range(start=start, end=end, freq='s', name='timestamp')
