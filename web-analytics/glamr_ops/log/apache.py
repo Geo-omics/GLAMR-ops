@@ -697,6 +697,51 @@ class LogData:
         print('[OK]')
         return df
 
+    @classmethod
+    def get_resampling_rate(cls, total_seconds, verbose=False):
+        """
+        Calculate optimal integral-hour/min/sec re-sampling rate
+
+        The rate is how many seconds each dot of the plot represents.
+
+        Returns a tuple (seconds, human_readable_text)
+        """
+        dots_target = cls.plot_dpi * cls.plot_width_in
+        if verbose:
+            print(f'[DEBUG] calc re-sampling: {dots_target=} {total_seconds=}')
+
+        best_diff = None
+        best_rate = None
+        for unit, secs in [('s', 1), ('m', 60), ('h', 3600)]:
+            for i in range(1, 30):
+                if unit in ('s', 'm'):
+                    if not (60 / i).is_integer():
+                        # not an integral part of larger unit
+                        continue
+                else:
+                    # hours
+                    if not (24 / i).is_integer():
+                        # not an integral part of day
+                        continue
+
+                rate = secs * i
+                dots_needed = total_seconds / rate
+                txt = f'{i}{unit}'
+                diff = abs(dots_target - dots_needed)
+
+                if verbose:
+                    print(f'[DEBUG] {unit=} {i=} {dots_needed=} {diff=}', end='  ')
+
+                if best_diff is None or diff < best_diff:
+                    best_diff = diff
+                    best_rate = (rate, txt)
+                    if verbose:
+                        print(f'{best_rate=}')
+                elif verbose:
+                    print()
+
+        return best_rate
+
     def _plot(self, df):
         """
         Do common plotting stuff
@@ -704,7 +749,8 @@ class LogData:
         # 0. resampling
         # We're aiming for one datapoint per dot
         rate = round(len(df) / (self.plot_dpi * self.plot_width_in))
-        print(f'Re-sampling at rate {rate}s ... ', end='', flush=True)
+        rate, rate_txt = self.get_resampling_rate(len(df))
+        print(f'Re-sampling at rate {rate}s / {rate_txt} ... ', end='', flush=True)
         df = df.resample(timedelta(seconds=rate)).mean()
         print('[OK]')
 
@@ -753,7 +799,7 @@ class LogData:
         ax.figure.set_tight_layout(True)
         ax.figure.set_size_inches(self.plot_width_in, self.plot_height_in)
         ax.figure.set_dpi(self.plot_dpi)
-        return ax
+        return ax, rate_txt
 
     def plot_year(self, year=None, outdir=None, format=default_plot_fmt):
         if year is None:
@@ -765,8 +811,8 @@ class LogData:
         print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
-        ax = self._plot(df)
-        ax.set_title(f'Hits for {year}')
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits for {year} at {rate_txt} resolution')
         outfile = Path(outdir or '.') / f'{year}.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
@@ -790,8 +836,8 @@ class LogData:
         print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
-        ax = self._plot(df)
-        ax.set_title(f'Hits for {year}/{month}')
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits for {year}/{month} at {rate_txt} resolution')
         outfile = Path(outdir or '.') / f'{year}-{month:02d}.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
@@ -804,8 +850,8 @@ class LogData:
         print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
-        ax = self._plot(df)
-        ax.set_title(f'Hits for last 30 days')
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits for last 30 days at {rate_txt} resolution')
         outfile = Path(outdir or '.') / f'month.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
@@ -818,9 +864,8 @@ class LogData:
         print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
-        ax = self._plot(df)
-        ax.set_title('Hits for last week')
-        ax.set_title(f'Hits for last week')
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits for last week at {rate_txt} resolution')
         outfile = Path(outdir or '.') / f'week.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
@@ -832,8 +877,8 @@ class LogData:
         print(f'Plot for {start} to {self.end} ...')
         df = self.as_dataframe(start, self.end)
 
-        ax = self._plot(df)
-        ax.set_title('Hits since yesterday')
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits since yesterday at {rate_txt} resolution')
         outfile = Path(outdir or '.') / f'yesterday.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
