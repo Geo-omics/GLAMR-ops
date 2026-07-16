@@ -21,3 +21,25 @@ def gzip(path):
 
     run([prog, str(path)], check=True)
     return path.with_suffix(path.suffix + '.gz')
+
+
+def sorted_keys(some_dict, key=None):
+    """
+    Return the given dictionary with sorted keys.
+
+    key:
+        A custom key function that takes the dictionary key as input.  If None
+        then this simply sorts the dictionary keys.
+    """
+    def adapter(item):
+        return key(item[0])
+
+    if key is None:
+        keyarg = None
+    else:
+        keyarg = adapter
+
+    return {
+        k: v for k, v
+        in sorted(some_dict.items(), key=keyarg)
+    }

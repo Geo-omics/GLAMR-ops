@@ -19,7 +19,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 import pandas
 
 from glamr_ops import get_configuration
-from glamr_ops.utils import gzip
+from glamr_ops.utils import gzip, sorted_keys
 
 
 def cli():
@@ -515,15 +515,27 @@ class LogData:
                     if status not in self.hits[date]:
                         self.hits[date][status] = {}
                     if sec in self.hits[date][status]:
-                        self.hits[date][status][sec] += count
+                        # An entry for this second already exists.  Assuming
+                        # the skip count from the inport state is correct and
+                        # the log file did not get corrupted, then these hits
+                        # were not yet counted.
+                        # TODO: remove the debug message after some time, once
+                        # we're more convinced that this is all normal
                         print(f'[DEBUG] same second {date=} {status=} {sec=} '
-                              f'{self.hits[date][status][sec]=} {count=}')
-                        # raise RuntimeError(
-                        #     f'DUPE? {date=} {status=} {sec=} '
-                        #     f'{self.hits[date][status][sec]=}'
-                        # )
+                              f'was {self.hits[date][status][sec]=}, adding {count=}')
+                        self.hits[date][status][sec] += count
                     else:
                         self.hits[date][status][sec] = count
+
+        # maintain dictionary order since new keys may have been added (at end
+        # of the respective dicts)
+        self.hits = sorted_keys(self.hits)
+        for date in self.hits.keys():
+            # sort statuses
+            self.hits[date] = sorted_keys(self.hits[date], lambda x: str(x))
+            for status in self.hits[date].keys():
+                # sort seconds
+                self.hits[date][status] = sorted_keys(self.hits[date][status])
 
         for i in log_iters:
             if i.total_lines is None:
