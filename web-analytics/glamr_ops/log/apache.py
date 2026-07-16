@@ -43,11 +43,31 @@ def cli():
         '--hits-data',
         help='Path to the hits data directory',
     )
+    plot_parser = subs.add_parser('plot', help='Make plots')
+    plot_parser.add_argument(
+        '--hits-data',
+        help='Path to the hits data directory',
+    )
+    plot_parser.add_argument(
+        '--outdir', help='Output directory',
+    )
+    plot_parser.add_argument(
+        '--format',
+        default=LogData.default_plot_fmt,
+        help='Output files format.  Provide the a file suffix supported by '
+             'matplotlib\'s Figure.savefig(). Defaults to {LogData.default_plot_fmt}',
+    )
     args = argp.parse_args()
     match args.cmd:
         case 'fix': fix_logs(*args.paths)
         case 'import-hits':
             LogData.update_from_logfiles(*args.logs, data_dir=args.hits_data)
+        case 'plot':
+            logs = LogData(data_dir=args.hits_data)
+            logs.plot_yesterday(outdir=args.outdir, format=args.format)
+            logs.plot_week(outdir=args.outdir, format=args.format)
+            logs.plot_30days(outdir=args.outdir, format=args.format)
+            logs.plot_all_years(outdir=args.outdir, format=args.format)
         case _: argp.error('invalid subcommand')
 
 
@@ -166,6 +186,7 @@ class LogData:
     plot_width_in = 13  # plot width in inches
     plot_height_in = 3  # plot height in inches
     plot_dpi = 100  # DPI for plot
+    default_plot_fmt = 'png'
 
     def __init__(self, first_day=None, last_day=None, data_dir=None):
         if isinstance(first_day, str):
@@ -734,23 +755,24 @@ class LogData:
         ax.figure.set_dpi(self.plot_dpi)
         return ax
 
-    def plot_year(self, year=None):
+    def plot_year(self, year=None, outdir=None, format=default_plot_fmt):
         if year is None:
             year = self.last_day.year
 
         start = datetime(year, 1, 1).astimezone()
         end = datetime(year + 1, 1, 1).astimezone() - timedelta(seconds=1)
 
+        print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
         ax = self._plot(df)
         ax.set_title(f'Hits for {year}')
-        outfile = f'{year}.png'
+        outfile = Path(outdir or '.') / f'{year}.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
         print(f'saved as: {outfile} [OK]')
 
-    def plot_month(self, year=None, month=None):
+    def plot_month(self, year=None, month=None, outdir=None, format=default_plot_fmt):
         if month is None and month is not None:
             raise ValueError('need a year if month is given')
         if year is None:
@@ -765,39 +787,76 @@ class LogData:
             1
         ).astimezone() - timedelta(seconds=1)
 
+        print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
         ax = self._plot(df)
         ax.set_title(f'Hits for {year}/{month}')
-        outfile = f'{year}-{month:02d}.png'
+        outfile = Path(outdir or '.') / f'{year}-{month:02d}.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
         print(f'saved as: {outfile} [OK]')
 
-    def plot_week(self):
+    def plot_30days(self, outdir=None, format=default_plot_fmt):
+        """ Plot last 30 days """
+        start = self.d2dt(datetime_date.today()) - timedelta(days=30)
+        end = datetime.now().astimezone()
+        print(f'Plot for {start} to {end} ...')
+        df = self.as_dataframe(start, end)
+
+        ax = self._plot(df)
+        ax.set_title(f'Hits for last 30 days')
+        outfile = Path(outdir or '.') / f'month.{format}'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
+
+    def plot_week(self, outdir=None, format=default_plot_fmt):
         """ Plot for last seven days """
         start = self.d2dt(datetime_date.today()) - timedelta(days=7)
         end = datetime.now().astimezone()
+        print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
 
         ax = self._plot(df)
         ax.set_title('Hits for last week')
-        outfile = 'week.png'
+        ax.set_title(f'Hits for last week')
+        outfile = Path(outdir or '.') / f'week.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
         print(f'saved as: {outfile} [OK]')
 
-    def plot_yesterday(self):
+    def plot_yesterday(self, outdir=None, format=default_plot_fmt):
         """ Plot for all of yesterday until latest data """
         start = self.d2dt(datetime_date.today()) - timedelta(days=1)
+        print(f'Plot for {start} to {self.end} ...')
         df = self.as_dataframe(start, self.end)
 
         ax = self._plot(df)
         ax.set_title('Hits since yesterday')
-        outfile = 'yesterday.png'
+        outfile = Path(outdir or '.') / f'yesterday.{format}'
         print('Plotting... ', end='', flush=True)
         ax.figure.savefig(outfile)
         print(f'saved as: {outfile} [OK]')
+
+    def plot_all_years(self, outdir=None, format=default_plot_fmt):
+        """ Ensure yearly plots exists """
+        for year in sorted(set(day.year for day in self.hits)):
+            outfile = Path(outdir or '.') / f'{year}.{format}'
+            if outfile.is_file():
+                plot_mt = datetime.fromtimestamp(outfile.stat().st_mtime).astimezone()
+                data_mt = None
+                for (y, _), path in self.loaded_data_files.items():
+                    # get most recent modtime for this year's data
+                    mt = datetime.fromtimestamp(path.stat().st_mtime).astimezone()
+                    if data_mt is None or data_mt < mt:
+                        data_mt = mt
+                if data_mt < plot_mt:
+                    # existing file is up-to-date
+                    print(f'Is up-to-date: {outfile}')
+                    continue
+
+            self.plot_year(year, outdir=outdir, format=format)
 
 
 def fix_file(ifile, ofile, efile):
