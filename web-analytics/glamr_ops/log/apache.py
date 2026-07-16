@@ -43,6 +43,11 @@ def cli():
         '--hits-data',
         help='Path to the hits data directory',
     )
+    hits_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Dry run, existing data files are not overwritten.',
+    )
     plot_parser = subs.add_parser('plot', help='Make plots')
     plot_parser.add_argument(
         '--hits-data',
@@ -61,7 +66,11 @@ def cli():
     match args.cmd:
         case 'fix': fix_logs(*args.paths)
         case 'import-hits':
-            LogData.update_from_logfiles(*args.logs, data_dir=args.hits_data)
+            LogData.update_from_logfiles(
+                *args.logs,
+                data_dir=args.hits_data,
+                dry_run=args.dry_run
+            )
         case 'plot':
             logs = LogData(data_dir=args.hits_data)
             logs.plot_yesterday(outdir=args.outdir, format=args.format)
@@ -216,7 +225,7 @@ class LogData:
         return Path(get_configuration()['VAR_DIR']) / 'hits.data'
 
     @classmethod
-    def update_from_logfiles(cls, *logfiles, data_dir=None):
+    def update_from_logfiles(cls, *logfiles, data_dir=None, dry_run=False):
         """ Implement the CLI hits sub-command """
         if data_dir:
             data_dir = Path(data_dir)
@@ -253,7 +262,7 @@ class LogData:
             ) - timedelta(days=1)  # 1st day of next month minus 1 day
             obj = cls(first_day, last_day, data_dir=data_dir)
             obj.import_log_files(*logfile_batch)
-            obj.save_data()
+            obj.save_data(dry_run=dry_run)
             objs.append(obj)
         return objs
 
@@ -458,7 +467,7 @@ class LogData:
             self.status_avail = sorted(status_avail, key=str)
             print('[OK]')
 
-    def save_data(self):
+    def save_data(self, dry_run=False):
         # 1. get all months for which we have data
         months = sorted(set((i.year, i.month) for i in self.hits.keys()))
         for year, month in months:
@@ -498,7 +507,8 @@ class LogData:
                     ofile.flush()
                 if data_file.suffix == '.gz':
                     tmp_file = gzip(tmp_file)
-                tmp_file.rename(data_file)  # atomic replacement
+                if not dry_run:
+                    tmp_file.rename(data_file)  # atomic replacement
             print('[OK]')
 
     def import_log_files(self, *logfiles):
