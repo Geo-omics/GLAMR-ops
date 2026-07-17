@@ -1090,16 +1090,31 @@ class LogData:
         for year in sorted(set(day.year for day in self.hits)):
             outfile = Path(outdir or '.') / f'{year}.{format}'
             if outfile.is_file():
+                # 1 .get age of plot
                 plot_mt = datetime.fromtimestamp(outfile.stat().st_mtime).astimezone()
+                # 2. get age of data
                 data_mt = None
                 for (y, _), path in self.loaded_data_files.items():
-                    # get most recent modtime for this year's data
+                    if y != year:
+                        continue
                     mt = datetime.fromtimestamp(path.stat().st_mtime).astimezone()
                     if data_mt is None or data_mt < mt:
-                        data_mt = mt
-                if data_mt < plot_mt:
-                    # existing file is up-to-date
+                        data_mt = mt  # keep the most recent date
+
+                if data_mt is None:
+                    print(f'[WARNING] got {year} data but no matching loaded file?')
+                    continue
+
+                # 3. compare
+                diff = data_mt - plot_mt
+                if diff <= timedelta():
+                    # plot is younger than data, keep existing plot
                     print(f'Is up-to-date: {outfile}')
+                    continue
+
+                if diff < timedelta(days=6.9):
+                    # there's new data but plot is less than a week old, keep for now
+                    print(f'Less than a week old: {outfile}')
                     continue
 
             self.plot_year(year, outdir=outdir, format=format)
