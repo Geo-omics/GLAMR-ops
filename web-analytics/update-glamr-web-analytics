@@ -34,7 +34,7 @@ done
 if ! [[ -t 0 && -t 1 ]]; then
     # non-interactive, e.g. run as cron job
     # keep a log file
-    exec 1>"$LOG" 2>&1
+    exec 1>>"$LOG" 2>&1
 fi
 
 mkdir -p -- "$VAR_DIR"
