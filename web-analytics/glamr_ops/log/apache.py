@@ -60,6 +60,11 @@ def cli():
         'that length with the given time at the midpoint will be plotted.',
     )
     plot_parser.add_argument(
+        '--access-log',
+        help='Path to specific apache access log from which to plot data.  '
+             'Only use this if fromto are also given.',
+    )
+    plot_parser.add_argument(
         '--hits-data',
         help='Path to the hits data directory',
     )
@@ -174,11 +179,15 @@ def cli():
                 logs = LogData(
                     first_day=arg1.date(),
                     last_day=arg2.date(),
-                    data_dir=args.hits_data,
+                    data_dir=None if args.access_log else args.hits_data,
                 )
+                if args.access_log:
+                    logs.import_log_files(Path(args.access_log))
                 logs.plot(arg1, arg2, outdir=args.outdir, format=args.format)
             else:
                 # auto-mode for cron job
+                if args.access_log:
+                    argp.error('--access-log option is not valid for auto mode')
                 logs = LogData(data_dir=args.hits_data)
                 logs.plot_yesterday(outdir=args.outdir, format=args.format)
                 logs.plot_week(outdir=args.outdir, format=args.format)
@@ -304,14 +313,18 @@ class LogData:
     plot_dpi = 100  # DPI for plot
     default_plot_fmt = 'png'
 
-    def __init__(self, first_day=None, last_day=None, data_dir=None):
+    USE_DEFAULT = object()
+
+    def __init__(self, first_day=None, last_day=None, data_dir=USE_DEFAULT):
         if isinstance(first_day, str):
             first_day = datetime_date.fromisoformat(first_day)
         if isinstance(last_day, str):
             last_day = datetime_date.fromisoformat(last_day)
 
-        if data_dir is None:
-            self.data_dir = Path(self.get_default_data_dir())
+        if data_dir is self.USE_DEFAULT:
+            self.data_dir = self.get_default_data_dir()
+        elif data_dir is None:
+            self.data_dir = None
         else:
             self.data_dir = Path(data_dir)
 
@@ -332,16 +345,18 @@ class LogData:
         return Path(get_configuration()['VAR_DIR']) / 'hits.data'
 
     @classmethod
-    def update_from_logfiles(cls, *logfiles, data_dir=None, dry_run=False):
+    def update_from_logfiles(cls, *logfiles, data_dir=USE_DEFAULT, dry_run=False):
         """ Implement the CLI hits sub-command """
-        if data_dir:
-            data_dir = Path(data_dir)
-        else:
+        if data_dir is cls.USE_DEFAULT:
             data_dir = cls.get_default_data_dir()
+        elif data_dir is None:
+            raise ValueError('data_dir must not be None here')
+        else:
+            data_dir = Path(data_dir)
 
         if not logfiles:
             log_dir = Path(get_configuration()['VAR_DIR']) / 'daily-logs'
-            last_update = cls.get_last_modified().timestamp()
+            last_update = cls.get_last_modified(data_dir).timestamp()
             logfiles = [
                 path
                 for _, path
@@ -374,7 +389,7 @@ class LogData:
         return objs
 
     @classmethod
-    def get_last_modified(cls, data_dir=None):
+    def get_last_modified(cls, data_dir):
         """
         Get timestamp when data base was last modified
 
@@ -391,18 +406,22 @@ class LogData:
         return datetime.fromtimestamp(last).astimezone()
 
     @classmethod
-    def list_all_data_files(cls, data_dir=None):
-        """ helper listing *all* data files, sorted by year/month """
-        if data_dir is None:
-            data_dir = cls.get_default_data_dir()
+    def list_all_data_files(cls, data_dir):
+        """
+        helper listing *all* data files, sorted by year/month
 
+        data_dir:
+            Were to find the data files.  If this is None, then an empty list
+            will still be returned.
+        """
         files = {}
-        for i in data_dir.iterdir():
-            if m := cls.data_file_pat.match(i.name):
-                key = (int(m['year']), int(m['month']))
-                if key in files:
-                    raise RuntimeError(f'there are two files for year/month: {key}')
-                files[key] = i
+        if data_dir is not None:
+            for i in data_dir.iterdir():
+                if m := cls.data_file_pat.match(i.name):
+                    key = (int(m['year']), int(m['month']))
+                    if key in files:
+                        raise RuntimeError(f'there are two files for year/month: {key}')
+                    files[key] = i
         return sorted(files.items())
 
     def get_data_files(self):
@@ -433,7 +452,10 @@ class LogData:
         # cf. LogData.data_file_pat
         stem = f'{year}-{month:02d}'
         suf = '.json.gz' if compressed else '.json'
-        return (self.data_dir / stem).with_suffix(suf)
+        if self.data_dir is None:
+            return None
+        else:
+            return (self.data_dir / stem).with_suffix(suf)
 
     @property
     def start(self):
@@ -525,6 +547,17 @@ class LogData:
         except ValueError:
             return value
 
+    def update_status_avail(self):
+        """
+        update the status_avail attribute
+
+        Should be called after loading/importing data
+        """
+        status_avail = set()
+        for date in self.hits:
+            status_avail.update(self.hits[date].keys())
+        self.status_avail = sorted(status_avail, key=str)
+
     def load_data(self):
         """
         Load data from data files.
@@ -535,7 +568,6 @@ class LogData:
         self.hits = {}
         self.import_state = {}
         self.loaded_data_files = {}
-        status_avail = set()
         for (y, m), path in self.get_data_files():
             if path.suffix == '.gz':
                 ifile = stdlib_gzip.open(path, 'rt')
@@ -568,10 +600,9 @@ class LogData:
                         for status, counts_data
                         in single_day_data.items()
                     }
-                    status_avail.update(self.hits[date].keys())
 
             self.loaded_data_files[(y, m)] = path
-            self.status_avail = sorted(status_avail, key=str)
+            self.update_status_avail()
             print('[OK]')
 
     def save_data(self, dry_run=False):
@@ -658,6 +689,8 @@ class LogData:
             for status in self.hits[date].keys():
                 # sort seconds
                 self.hits[date][status] = sorted_keys(self.hits[date][status])
+
+        self.update_status_avail()
 
         for i in log_iters:
             if i.total_lines is None:
@@ -961,7 +994,6 @@ class LogData:
         print(f'Plot for {start} to {end} ...')
         df = self.as_dataframe(start, end)
         print(f'There is data for {len(df)} seconds.')
-        print(df.describe())
 
         ax, rate_txt = self._plot(df)
         ax.set_title(f'Hits from {start} to {end} at {rate_txt} resolution')
