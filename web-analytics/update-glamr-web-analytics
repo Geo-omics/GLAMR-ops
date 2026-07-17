@@ -50,6 +50,8 @@ fi
 HITS_DATA_DIR=$VAR_DIR/hits.data
 mkdir -p -- "$HITS_DATA_DIR"
 python3 -m glamr_ops.log.apache import-hits --hits-data "$HITS_DATA_DIR"
+python3 -m glamr_ops.log.apache plot --hits-data "$HITS_DATA_DIR" --outdir "$HTML_DIR" --format svg
+
 
 function make-html () {
     title=$1

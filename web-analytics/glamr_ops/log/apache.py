@@ -5,7 +5,7 @@ import argparse
 from collections import Counter, defaultdict
 from contextlib import ExitStack
 import dataclasses
-from datetime import date as datetime_date, datetime, timedelta
+from datetime import date as datetime_date, datetime, time as datetime_time, timedelta
 import gzip as stdlib_gzip
 from itertools import chain
 import json
@@ -50,6 +50,16 @@ def cli():
     )
     plot_parser = subs.add_parser('plot', help='Make plots')
     plot_parser.add_argument(
+        'fromto',
+        nargs='*',
+        help='Not providing these implies auto-mode (used for the cron job).  '
+        'If two iso-formatted date or times are given then these are start and'
+        ' end point respectively.  If one argument is given, and it is a date '
+        'then that day\'s data is plotted.  Alternatively a time and a '
+        'duration e.g. "10m" can be given, in which case a time interval of '
+        'that length with the given time at the midpoint will be plotted.',
+    )
+    plot_parser.add_argument(
         '--hits-data',
         help='Path to the hits data directory',
     )
@@ -72,11 +82,108 @@ def cli():
                 dry_run=args.dry_run
             )
         case 'plot':
-            logs = LogData(data_dir=args.hits_data)
-            logs.plot_yesterday(outdir=args.outdir, format=args.format)
-            logs.plot_week(outdir=args.outdir, format=args.format)
-            logs.plot_30days(outdir=args.outdir, format=args.format)
-            logs.plot_all_years(outdir=args.outdir, format=args.format)
+            if args.fromto:
+                arg1, *arg2 = args.fromto
+                arg2 = arg2[0] if arg2 else None
+                try:
+                    arg1 = datetime_date.fromisoformat(arg1)
+                except ValueError as e1:
+                    try:
+                        arg1 = datetime.fromisoformat(arg1).astimezone()
+                    except ValueError as e2:
+                        try:
+                            arg1 = datetime_time.fromisoformat(arg1)
+                        except ValueError as e3:
+                            argp.error(
+                                f'first positional argument must be iso-formatted '
+                                f'date, time, or datetime: {e1}/{e2}/{e3}'
+                            )
+                        else:
+                            # time -> datetime
+                            arg1 = LogData.d2dt(datetime.today(), arg1)
+
+                if arg2:
+                    try:
+                        arg2 = datetime_date.fromisoformat(arg2)
+                    except ValueError as e1:
+                        try:
+                            arg2 = datetime_time.fromisoformat(arg2)
+                        except ValueError as e2:
+                            try:
+                                arg2 = datetime.fromisoformat(arg2).astimezone()
+                            except ValueError as e3:
+                                pat = re.compile(r'^([0-9]+)([hms])$')
+                                units = {'h': 'hours', 'm': 'minutes', 's': 'seconds'}
+                                if m := pat.match(arg2):
+                                    if isinstance(arg1, datetime):
+                                        amount, unit = m.groups()
+                                        amount = int(amount)
+                                        unit = units[unit]
+                                        half_duration = timedelta(**{unit: amount}) / 2
+                                        arg2 = arg1 + half_duration
+                                        arg1 = arg1 - half_duration
+                                        arg1 = arg1.replace(microsecond=0)
+                                        arg2 = arg2.replace(microsecond=0)
+                                    else:
+                                        argp.error(
+                                            'if the second positional argument is a '
+                                            'duration, then the first must be a time '
+                                            'or datetime'
+                                        )
+                                else:
+                                    argp.error(
+                                        f'second positional argument, if provided, '
+                                        f'must be iso-formatted date, time, or '
+                                        f'datetime: {e1}/{e2}/{e3} or a duration, '
+                                        f'e.g.: 30s / 10m / 2h'
+                                    )
+                        else:
+                            # time -> datetime
+                            arg2 = LogData.d2dt(datetime.today(), arg2)
+                        if not isinstance(arg1, datetime):
+                            argp.error(
+                                'if the first positional argument is a date, then the '
+                                'second one, if given, must also be a date'
+                            )
+                    else:
+                        # arg2 is date
+                        if isinstance(arg1, datetime):
+                            argp.error(
+                                'if the second positional argument is a date, then '
+                                'first one must be a date as well'
+                            )
+                        # date->datetime first day midnight to last second of other day
+                        arg1 = datetime(arg1.year, arg1.month, arg1.day).astimezone()
+                        arg2 = datetime(arg2.year, arg2.month, arg2.day, 23, 59, 59)
+                        arg2 = arg2.astimezone()
+                else:
+                    # get arg2 default value if needed
+                    if type(arg1) == datetime_date:
+                        # the given day from 00:00:00 to 23:59:59
+                        arg1 = datetime(arg1.year, arg1.month, arg1.day).astimezone()
+                        arg2 = arg1 + timedelta(days=1) - timedelta(seconds=1)
+                    else:
+                        # default to 1-hour interval
+                        halfhour = timedelta(hours=1) / 2
+                        arg2 = arg1 + halfhour
+                        arg1 = arg1 - halfhour
+                if arg2 <= arg1:
+                    argp.error('date/time of first positional argument must be earlier '
+                               'than the second argument')
+
+                logs = LogData(
+                    first_day=arg1.date(),
+                    last_day=arg2.date(),
+                    data_dir=args.hits_data,
+                )
+                logs.plot(arg1, arg2, outdir=args.outdir, format=args.format)
+            else:
+                # auto-mode for cron job
+                logs = LogData(data_dir=args.hits_data)
+                logs.plot_yesterday(outdir=args.outdir, format=args.format)
+                logs.plot_week(outdir=args.outdir, format=args.format)
+                logs.plot_30days(outdir=args.outdir, format=args.format)
+                logs.plot_all_years(outdir=args.outdir, format=args.format)
         case _: argp.error('invalid subcommand')
 
 
@@ -611,10 +718,18 @@ class LogData:
             yield counts_per_second.get(sec, 0)
 
     @staticmethod
-    def d2dt(date, seconds=0):
+    def d2dt(date, time=0):
         """
         Utility to make a datetime from a date and number of seconds into the day
+
+        time:
+            Time of the day, if an int, then number of seconds, other wise a
+            datetime.time object.
         """
+        if isinstance(time, int):
+            seconds = time
+        else:
+            seconds = time.hour * 3600 + time.minute * 60 + time.second
         t = datetime(date.year, date.month, date.day).astimezone()
         return t + timedelta(seconds=seconds)
 
@@ -831,6 +946,29 @@ class LogData:
         ax.figure.set_size_inches(self.plot_width_in, self.plot_height_in)
         ax.figure.set_dpi(self.plot_dpi)
         return ax, rate_txt
+
+    def plot(self, start, end, outdir=None, format=default_plot_fmt):
+        """ Plot given interval """
+        if start is None:
+            start = self.start
+        elif isinstance(start, str):
+            start = datetime.fromisoformat(start).astimezone()
+        if end is None:
+            end = self.end
+        elif isinstance(end, str):
+            end = datetime.fromisoformat(end).astimezone()
+
+        print(f'Plot for {start} to {end} ...')
+        df = self.as_dataframe(start, end)
+        print(f'There is data for {len(df)} seconds.')
+        print(df.describe())
+
+        ax, rate_txt = self._plot(df)
+        ax.set_title(f'Hits from {start} to {end} at {rate_txt} resolution')
+        outfile = Path(outdir or '.') / f'apache_log_plot.{format}'
+        print('Plotting... ', end='', flush=True)
+        ax.figure.savefig(outfile)
+        print(f'saved as: {outfile} [OK]')
 
     def plot_year(self, year=None, outdir=None, format=default_plot_fmt):
         if year is None:
