@@ -17,7 +17,7 @@ install --mode=755 update-glamr-outage /usr/local/bin/
 install --mode=755 update-glamr-search-queries /usr/local/bin/
 
 # installs into /usr/local/lib/dist-packages:
-pip install --no-deps --no-build-isolation --no-index ./
+pip install --no-deps --no-build-isolation --disable-pip-version-check --no-index ./
 
 mkdir -p -- "$VAR_DIR"
 chown "$OPENSHIFT_USER":adm -- "$VAR_DIR"
