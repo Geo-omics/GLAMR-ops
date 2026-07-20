@@ -16,12 +16,9 @@ source /etc/glamr-web-analytics.conf
 DESTDIR=$VAR_DIR/daily-logs
 LOG=$VAR_DIR/update.log
 
-# Run as the openshift web app user so that we have permission to read log
-# files and so that the created files have correct perms.
-[[ "$(id -un)" == "$OPENSHIFT_USER" ]] || exec sudo -u "$OPENSHIFT_USER" -- "$0" "$@"
-
 
 # Process options
+origargs=( "$@" )
 download=true
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -30,6 +27,13 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
+# Run as the openshift web app user so that we have permission to read log
+# files and so that the created files have correct perms.
+! $download || [[ "$(id -un)" == "$OPENSHIFT_USER" ]] || exec sudo -u "$OPENSHIFT_USER" -- "$0" "$origargs"
+
+# Only run one instance (cf. flock(1) examples)
+[[ "${FLOCKER:-}" != "$0" ]] && exec env FLOCKER="$0" flock -en --verbose "$0" "$0" "$origargs" || :
 
 if ! [[ -t 0 && -t 1 ]]; then
     # non-interactive, e.g. run as cron job
