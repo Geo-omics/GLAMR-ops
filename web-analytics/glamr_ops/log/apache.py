@@ -356,12 +356,13 @@ class LogData:
 
         if not logfiles:
             log_dir = Path(get_configuration()['VAR_DIR']) / 'daily-logs'
-            last_update = cls.get_last_modified(data_dir).timestamp()
+            if last_update := cls.get_last_modified(data_dir):
+                last_update = last_update.timestamp()
             logfiles = [
                 path
                 for _, path
                 in list_log_files(log_dir)
-                if path.stat().st_mtime >= last_update
+                if last_update is None or path.stat().st_mtime >= last_update
             ]
         # divide logfile into monthly batches
         # A log file may also have data from previous day
@@ -403,7 +404,11 @@ class LogData:
             mtime = path.stat().st_mtime
             if last is None or mtime > last:
                 last = mtime
-        return datetime.fromtimestamp(last).astimezone()
+
+        if last is None:
+            return None
+        else:
+            return datetime.fromtimestamp(last).astimezone()
 
     @classmethod
     def list_all_data_files(cls, data_dir):
