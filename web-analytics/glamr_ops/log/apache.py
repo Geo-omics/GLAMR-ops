@@ -940,7 +940,8 @@ class LogData:
         ]
         bad_cols = [
             str(i) for i in self.status_avail
-            if isinstance(i, int) and 400 <= i < 499 and str(i) in df.columns
+            if isinstance(i, int) and 400 <= i < 499 and i != 429
+            and str(i) in df.columns
         ]
         err_cols = [
             str(i) for i in self.status_avail
@@ -952,6 +953,7 @@ class LogData:
         ]
         print('Summing columns by category... ', end='', flush=True)
         df['good hits'] = df[good_cols].sum(axis=1)
+        df['bouncer'] = df[['429']].sum(axis=1)
         df['bad hits'] = df[bad_cols].sum(axis=1)
         df['errors'] = df[err_cols].sum(axis=1)
         df['other'] = df[other_cols].sum(axis=1)
@@ -959,12 +961,13 @@ class LogData:
 
         # 2. remove original columns
         for i in df.columns:
-            if i not in ['good hits', 'bad hits', 'errors', 'other']:
+            if i not in ['good hits', 'bouncer', 'bad hits', 'errors', 'other']:
                 del df[i]
 
         # 3. assign colors to columns
         color = (
             'C2',  # green for good hits
+            'C0',  # blue for bouncer
             'C1',  # orange for bad
             'C3',  # red for errors
             'C7',  # grey for others
