@@ -79,13 +79,17 @@ def cli():
         help='Path to the hits data directory',
     )
     plot_parser.add_argument(
-        '--outdir', help='Output directory',
+        '--outdir', default='./', help='Output directory',
     )
     plot_parser.add_argument(
         '--format',
         default=LogData.default_plot_fmt,
         help='Output files format.  Provide the a file suffix supported by '
              'matplotlib\'s Figure.savefig(). Defaults to {LogData.default_plot_fmt}',
+    )
+    plot_parser.add_argument(
+        '--quick', action='store_true',
+        help='Auto-mode plotting only very recent data.'
     )
     args = argp.parse_args()
     match args.cmd:
@@ -194,17 +198,37 @@ def cli():
                     data_dir=None if args.access_log else args.hits_data,
                 )
                 if args.access_log:
-                    logs.import_log_files(Path(args.access_log))
-                logs.plot(arg1, arg2, outdir=args.outdir, format=args.format)
+                    logs.import_log_files(Path(args.access_log), skip_bad_lines=True)
+                logs.plot(arg1, arg2, output=args.outdir, format=args.format)
             else:
                 # auto-mode for cron job
                 if args.access_log:
                     argp.error('--access-log option is not valid for auto mode')
-                logs = LogData(data_dir=args.hits_data)
-                logs.plot_yesterday(outdir=args.outdir, format=args.format)
-                logs.plot_week(outdir=args.outdir, format=args.format)
-                logs.plot_30days(outdir=args.outdir, format=args.format)
-                logs.plot_all_years(outdir=args.outdir, format=args.format)
+                if args.quick:
+                    logs = LogData(
+                        data_dir=args.hits_data,
+                        first_day=datetime_date.today(),
+                    )
+                    now = datetime.now().astimezone()
+                    odir = Path(args.outdir)
+                    items = [
+                        (timedelta(minutes=10), 'last10minutes'),
+                        (timedelta(hours=1), 'lasthour'),
+                        (timedelta(hours=6), 'last6hours'),
+                    ]
+                    for diff, name in items:
+                        start = now - diff
+                        if logs.end < start:
+                            print(f'No enough recent data for {name} / {diff}.  '
+                                  f'Earlierst is {logs.end}')
+                            continue
+                        logs.plot(start, None, output=odir / name, format=args.format)
+                else:
+                    logs = LogData(data_dir=args.hits_data)
+                    logs.plot_yesterday(outdir=args.outdir, format=args.format)
+                    logs.plot_week(outdir=args.outdir, format=args.format)
+                    logs.plot_30days(outdir=args.outdir, format=args.format)
+                    logs.plot_all_years(outdir=args.outdir, format=args.format)
         case _: argp.error('invalid subcommand')
 
 
@@ -1016,7 +1040,7 @@ class LogData:
         ax.figure.set_dpi(self.plot_dpi)
         return ax, rate_txt
 
-    def plot(self, start, end, outdir=None, format=default_plot_fmt):
+    def plot(self, start, end, output=None, format=default_plot_fmt):
         """ Plot given interval """
         if start is None:
             start = self.start
@@ -1033,10 +1057,17 @@ class LogData:
 
         ax, rate_txt = self._plot(df)
         ax.set_title(f'Hits from {start} to {end} at {rate_txt} resolution')
-        outfile = Path(outdir or '.') / f'apache_log_plot.{format}'
+        if output is None:
+            output = Path.cwd() / f'apache_log_plot.{format}'
+        else:
+            output = Path(output)
+            if output.is_dir():
+                output = output / f'apache_log_data_plot.{format}'
+            elif output.suffix != '.' + format:
+                output = output.with_suffix('.' + format)
         print('Plotting... ', end='', flush=True)
-        ax.figure.savefig(outfile)
-        print(f'saved as: {outfile} [OK]')
+        ax.figure.savefig(output)
+        print(f'saved as: {output} [OK]')
 
     def plot_year(self, year=None, outdir=None, format=default_plot_fmt):
         if year is None:

@@ -20,10 +20,12 @@ LOG=$VAR_DIR/update.log
 # Process options
 origargs=( "$@" )
 download=true
+quick=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-download) download=false;;
-        *) echo >&2 "bad option: $1, allowed are --no-download"; exit 1;;
+        --quick) quick=true;;
+        *) echo >&2 "bad option: $1, allowed are --no-download and --quick"; exit 1;;
     esac
     shift
 done
@@ -54,8 +56,12 @@ fi
 HITS_DATA_DIR=$VAR_DIR/hits.data
 mkdir -p -- "$HITS_DATA_DIR"
 python3 -m glamr_ops.log.apache import-hits --hits-data "$HITS_DATA_DIR"
-python3 -m glamr_ops.log.apache plot --hits-data "$HITS_DATA_DIR" --outdir "$HTML_DIR" --format svg
-
+if $quick; then
+    python3 -m glamr_ops.log.apache plot --hits-data "$HITS_DATA_DIR" --outdir "$HTML_DIR" --format svg --quick
+    exit
+else
+    python3 -m glamr_ops.log.apache plot --hits-data "$HITS_DATA_DIR" --outdir "$HTML_DIR" --format svg
+fi
 
 function make-html () {
     title=$1
