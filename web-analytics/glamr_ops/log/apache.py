@@ -823,15 +823,20 @@ class LogData:
 
             seconds = dt.hour * 3600 + dt.minute * 60 + dt.second
 
-            if entry.user_agent.startswith('kube-probe/'):
+            if (
+                entry.user_agent.startswith('kube-probe/')
+                or entry.user_agent == 'glamr-webapp-healthtest'
+                or (entry.meth == 'GET' and entry.path == '/' and not entry.query
+                    and entry.user_agent == '-')
+            ):
                 if 200 <= entry.status <= 299:
-                    hits[date]['probe'][seconds] += 1
-                elif 400 <= entry.status:
-                    hits[date]['probe-fail'][seconds] += 1
-                continue
-
+                    status = 'probe'
+                else:
+                    status = 'probe-fail'
             else:
-                hits[date][entry.status][seconds] += 1
+                status = entry.status
+
+            hits[date][status][seconds] += 1
 
         # 2. Sort by day/status/seconds
         hits = sorted_keys(hits)
@@ -1032,45 +1037,46 @@ class LogData:
         print('[OK]')
 
         # 1. sum data into four columns
-        good_cols = [
+        summed_cols = {}
+        summed_cols['good_cols'] = [
             str(i) for i in self.status_avail
             if isinstance(i, int) and 200 <= i < 399 and str(i) in df.columns
         ]
-        bad_cols = [
+        summed_cols['healthtest'] = ['probe'] if 'probe' in self.status_avail else []
+        summed_cols['bouncer'] = ['429'] if 429 in self.status_avail else []
+        summed_cols['bad_cols'] = [
             str(i) for i in self.status_avail
             if isinstance(i, int) and 400 <= i < 499 and i != 429
+            or i == 'probe-fail'
             and str(i) in df.columns
         ]
-        err_cols = [
+        summed_cols['err_cols'] = [
             str(i) for i in self.status_avail
             if isinstance(i, int) and 500 <= i < 599 and str(i) in df.columns
         ]
-        other_cols = [
+        summed_cols['other_cols'] = [
             i for i in df.columns
-            if i not in good_cols + bad_cols + err_cols
+            if i not in [j for cols in summed_cols.values() for j in cols]
         ]
         print('Summing columns by category... ', end='', flush=True)
-        df['good hits'] = df[good_cols].sum(axis=1)
-        df['bouncer'] = df[['429']].sum(axis=1)
-        df['bad hits'] = df[bad_cols].sum(axis=1)
-        df['errors'] = df[err_cols].sum(axis=1)
-        df['other'] = df[other_cols].sum(axis=1)
+        summed_df = pandas.DataFrame(index=df.index)
+        for summary, cols in summed_cols.items():
+            summed_df[summary] = df[cols].sum(axis=1)
+        del df
         print('[OK]')
 
-        # 2. remove original columns
-        for i in df.columns:
-            if i not in ['good hits', 'bouncer', 'bad hits', 'errors', 'other']:
-                del df[i]
-
-        # 3. assign colors to columns
+        # 2. assign colors to columns (same order as summary columns above)
         color = (
             'C2',  # green for good hits
+            'C4',  # purplish for healthtest
             'C0',  # blue for bouncer
             'C1',  # orange for bad
             'C3',  # red for errors
             'C7',  # grey for others
         )
-        ax = df.plot(
+
+        # 3. do the plotting
+        ax = summed_df.plot(
             logy=True,
             color=color,
             linewidth=0.5,
