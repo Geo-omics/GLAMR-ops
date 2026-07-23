@@ -240,7 +240,10 @@ class BadApacheLog(Exception):
 class ApacheLogEntry:
     host: str
     timestamp: datetime
-    request: str
+    meth: str
+    path: str
+    query: str
+    proto: str
     status: int
     bytes: int
     referer: str
@@ -263,6 +266,15 @@ class ApacheLogEntry:
         + '$'
     )
     logpat = re.compile(logpat)
+    http_methods = {'GET', 'HEAD', 'OPTIONS', 'TRACE', 'PUT', 'DELETE', 'POST',
+                    'PATCH', 'CONNECT'}
+    """ available as enum http.HTTPMethod in Python 3.11+ """
+    request_uri_prefixes = (
+        '/',
+        'https://glamr.earth.lsa.umich.edu/',
+        'https://greatlakesomics.org/',
+    )
+    """ expected prefixes of request URI, anything but / is very rare """
 
     @classmethod
     def from_line(cls, line):
@@ -292,8 +304,37 @@ class ApacheLogEntry:
         except ValueError as e:
             raise BadApacheLog(f'bad bytes: {e}') from e
 
-        for k in ('request', 'referer', 'user_agent'):
+        for k in ('referer', 'user_agent'):
             kw[k] = kw[k].strip('"')
+
+        request = m['request'].strip('"')
+        try:
+            meth, uri, proto = request.split(' ')
+        except ValueError as e:
+            if request == '-':
+                # e.g. 408 response, very rare
+                meth = path = query = proto = None
+            elif kw['status'] == 414:
+                # URI too long, proto did not fit in log
+                meth, _, uri_part = request.partition(' ')
+                path, _, query = uri_part.partition('?')
+                proto = None
+            else:
+                raise BadApacheLog(f'failed parsing the request line: {e}') from e
+        else:
+            path, _, query = uri.partition('?')
+
+        if path is not None:
+            if not path.startswith(cls.request_uri_prefixes):
+                raise BadApacheLog('request URI has invalid prefix')
+
+        if meth is not None and meth not in cls.http_methods:
+            raise BadApacheLog(f'invalid method: {meth}')
+
+        kw['meth'] = meth
+        kw['path'] = path
+        kw['query'] = query
+        kw['proto'] = proto
 
         return cls(**kw)
 
