@@ -970,6 +970,10 @@ class LogData:
         elif isinstance(end, str):
             end = datetime.fromisoformat(end).astimezone()
 
+        # non-zero microsecs in the index get us in a mess
+        start = start.replace(microsecond=0)
+        end = end.replace(microsecond=0)
+
         print('Compiling dataframe... ', end='', flush=True)
         index = pandas.date_range(start=start, end=end, freq='s', name='timestamp')
         df = pandas.DataFrame(index=index, dtype=pandas.Int64Dtype())
