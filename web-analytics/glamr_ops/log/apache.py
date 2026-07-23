@@ -979,7 +979,7 @@ class LogData:
         df = pandas.DataFrame(index=index, dtype=pandas.Int64Dtype())
         for status in self.status_avail:
             df[str(status)] = self.as_series(status, index)
-            print(status, end=' ', flush=True)
+            print(f'{status}({df[str(status)].sum()})', end=' ', flush=True)
         print('[OK]')
         return df
 
