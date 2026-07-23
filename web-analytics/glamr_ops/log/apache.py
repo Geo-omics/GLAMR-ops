@@ -48,6 +48,16 @@ def cli():
         action='store_true',
         help='Dry run, existing data files are not overwritten.',
     )
+    hits_parser.add_argument(
+        '--skip-bad-lines',
+        action='store_true',
+        help='Do not rais an error but skip malformed log lines',
+    )
+    hits_parser.add_argument(
+        '--quiet',
+        action='store_true',
+        help='Do not show certain warning messages about malformed log lines',
+    )
     plot_parser = subs.add_parser('plot', help='Make plots')
     plot_parser.add_argument(
         'fromto',
@@ -84,7 +94,9 @@ def cli():
             LogData.update_from_logfiles(
                 *args.logs,
                 data_dir=args.hits_data,
-                dry_run=args.dry_run
+                dry_run=args.dry_run,
+                skip_bad_lines=args.skip_bad_lines,
+                quiet=args.quiet,
             )
         case 'plot':
             if args.fromto:
@@ -272,9 +284,11 @@ class LogEntries:
 
     This yields instances of ApacheLogentry.
     """
-    def __init__(self, path, skip=0):
+    def __init__(self, path, skip=0, skip_bad_lines=False, quiet=False):
         self.path = Path(path)
         self.skip = skip
+        self.skip_bad_lines = skip_bad_lines
+        self.quiet = quiet
         self.total_lines = None
 
     def __iter__(self):
@@ -296,7 +310,11 @@ class LogEntries:
                 try:
                     yield ApacheLogEntry.from_line(line)
                 except BadApacheLog as e:
-                    raise RuntimeError(errmsg.format(msg=e)) from e
+                    if self.skip_bad_lines:
+                        if not self.quiet:
+                            print('[WARNING]', errmsg.format(msg=e))
+                        continue
+                    raise BadApacheLog(errmsg.format(msg=e)) from e
 
         if self.skip:
             print(f'{lnum - self.skip}/{lnum} [OK]')
@@ -345,7 +363,8 @@ class LogData:
         return Path(get_configuration()['VAR_DIR']) / 'hits.data'
 
     @classmethod
-    def update_from_logfiles(cls, *logfiles, data_dir=USE_DEFAULT, dry_run=False):
+    def update_from_logfiles(cls, *logfiles, data_dir=USE_DEFAULT, dry_run=False,
+                             skip_bad_lines=False, quiet=False):
         """ Implement the CLI hits sub-command """
         if data_dir is cls.USE_DEFAULT:
             data_dir = cls.get_default_data_dir()
@@ -384,7 +403,11 @@ class LogData:
                 1
             ) - timedelta(days=1)  # 1st day of next month minus 1 day
             obj = cls(first_day, last_day, data_dir=data_dir)
-            if obj.import_log_files(*logfile_batch):
+            if obj.import_log_files(
+                *logfile_batch,
+                skip_bad_lines=skip_bad_lines,
+                quiet=quiet,
+            ):
                 obj.save_data(dry_run=dry_run)
             objs.append(obj)
         return objs
@@ -654,14 +677,19 @@ class LogData:
                     tmp_file.rename(data_file)  # atomic replacement
             print('[OK]')
 
-    def import_log_files(self, *logfiles):
+    def import_log_files(self, *logfiles, skip_bad_lines=False, quiet=False):
         """
         Import data from given log files
 
         Returns True if some new data was imported and False otherwise
         """
         log_iters = [
-            LogEntries(path, skip=self.import_state.get(path.name, 0))
+            LogEntries(
+                path,
+                skip=self.import_state.get(path.name, 0),
+                skip_bad_lines=skip_bad_lines,
+                quiet=quiet,
+            )
             for path in logfiles
         ]
         hits = self.get_hits(chain.from_iterable(log_iters))
