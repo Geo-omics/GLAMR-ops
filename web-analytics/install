@@ -10,8 +10,9 @@ CONFIG=/etc/glamr-web-analytics.conf
 source $CONFIG || { echo >&2 "You need to manually set up the config file: $CONFIG"; exit 1; }
 
 mkdir -p -- "$HTML_DIR"
-chown "$OPENSHIFT_USER" -- "$HTML_DIR"
+chown "$OPENSHIFT_USER":adm -- "$HTML_DIR"
 install --mode=644 index.html "$HTML_DIR"
+install --mode=644 short-term-plots.html "$HTML_DIR"
 install --mode=755 update-glamr-web-analytics /usr/local/bin/
 install --mode=755 update-glamr-outage /usr/local/bin/
 install --mode=755 update-glamr-search-queries /usr/local/bin/
