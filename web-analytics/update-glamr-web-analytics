@@ -55,7 +55,7 @@ fi
 # import apache hits
 HITS_DATA_DIR=$VAR_DIR/hits.data
 mkdir -p -- "$HITS_DATA_DIR"
-python3 -m glamr_ops.log.apache import-hits --hits-data "$HITS_DATA_DIR"
+python3 -m glamr_ops.log.apache import-hits --hits-data --skip-bad-lines "$HITS_DATA_DIR"
 if $quick; then
     python3 -m glamr_ops.log.apache plot --hits-data "$HITS_DATA_DIR" --outdir "$HTML_DIR" --format svg --quick
     exit
