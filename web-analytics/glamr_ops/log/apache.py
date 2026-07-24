@@ -1086,6 +1086,11 @@ class LogData:
             linewidth=0.5,
         )
         ax.set_ylabel('hits per second')
+        ax.legend(
+            loc=2,  # 2 is 'upper left'
+            fontsize='small',
+            # linewidth=2,  # available with matplotlib v3.7+
+        )
         ax.figure.set_tight_layout(True)
         ax.figure.set_size_inches(self.plot_width_in, self.plot_height_in)
         ax.figure.set_dpi(self.plot_dpi)
