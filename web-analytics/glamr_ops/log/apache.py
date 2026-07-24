@@ -19,6 +19,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 import pandas
 
 from glamr_ops import get_configuration
+from glamr_ops.log.retriever import LogRetriever, InvalidLogFileName
 from glamr_ops.utils import gzip, sorted_keys
 
 
@@ -465,15 +466,15 @@ class LogData:
                 last_update = last_update.timestamp()
             logfiles = [
                 path
-                for _, path
-                in list_log_files(log_dir)
+                for _, (path, _)
+                in ApacheLogRetriever.list_log_files(log_dir)
                 if last_update is None or path.stat().st_mtime >= last_update
             ]
         # divide logfile into monthly batches
         # A log file may also have data from previous day
         batches = {}
         for i in logfiles:
-            day = get_date(i)
+            day = ApacheLogRetriever.get_logfile_info(i)['date']
             prev_day = day - timedelta(days=1)
             for month in {(day.year, day.month), (prev_day.year, prev_day.month)}:
                 if month not in batches:
@@ -1377,64 +1378,38 @@ def fix_logs(*paths, redo=False):
     return ret_val
 
 
-class InvalidLogFileName(Exception):
-    pass
+class ApacheLogRetriever(LogRetriever):
+    name_pat = re.compile(r'^access\.(?P<date>[0-9]{8}).log(.gz)?$')
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        conf = get_configuration()
+        if not self.src_dir:
+            self.src_dir = Path(conf['OPENSHIFT_APACHE_LOGS'])
 
-access_log_pat = re.compile(r'^access\.(?P<date>[0-9]{8}).log(.gz)?$')
+        if not self.dst_dir:
+            self.dst_dir = Path(conf['VAR_DIR']) / 'daily-logs'
 
+    @classmethod
+    def get_logfile_info(cls, path):
+        """
+        Gets date from filename
 
-def get_date(path):
-    """
-    Get date for given log file
+        Log file should be named access.YYYMMDD.log[.gz]
+        """
+        path = Path(path)
+        if m := cls.name_pat.match(path.name):
+            # parse as YYYYMMDD
+            year = int(m['date'][:4])
+            month = int(m['date'][4:6])
+            day = int(m['date'][6:])
 
-    Log file should be named access.YYYMMDD.log[.gz]
-    """
-    path = Path(path)
-    if m := access_log_pat.match(path.name):
-        # parse as YYYYMMDD
-        year = int(m['date'][:4])
-        month = int(m['date'][4:6])
-        day = int(m['date'][6:])
-
-        try:
-            return datetime_date(year, month, day)
-        except ValueError as e:
-            raise InvalidLogFileName(f'bad date in filename: {path} -- {e}') from e
-    else:
-        raise InvalidLogFileName(f'invalid log filename: {path}')
-
-
-def list_log_files(dirpath, suffix=None):
-    """
-    Get list of apache access log files in given directory.
-
-    Returns list of tuples (date, pathlib.Path) sorted by date
-    """
-    if suffix is None:
-        allowed_suffices = ['.log', '.log.gz']
-    elif isinstance(suffix, str):
-        allowed_suffices = [suffix]
-    else:
-        # assume a list already
-        allowed_suffices = suffix
-
-    items = []
-    for i in Path(dirpath).iterdir():
-        for j in allowed_suffices:
-            if i.name.endswith(j):
-                break
+            try:
+                return {'date': datetime_date(year, month, day)}
+            except ValueError as e:
+                raise InvalidLogFileName(f'bad date in filename: {path} -- {e}') from e
         else:
-            # invalid suffix
-            continue
-
-        try:
-            items.append((get_date(i), i))
-        except InvalidLogFileName:
-            pass
-
-    # sort by date
-    return sorted(items)
+            raise InvalidLogFileName(f'invalid log filename: {path}')
 
 
 if __name__ == '__main__':

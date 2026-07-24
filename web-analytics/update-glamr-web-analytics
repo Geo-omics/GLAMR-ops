@@ -48,7 +48,8 @@ cd "$VAR_DIR"
 
 if $download; then
     mkdir -p -- "$DESTDIR"
-    python3 -m glamr_ops.log retrieve --remove-original
+    python3 -m glamr_ops.log retrieve --remove-original apache
+    python3 -m glamr_ops.log retrieve --remove-original uwsgi
     # TODO: get other logs
 fi
 
