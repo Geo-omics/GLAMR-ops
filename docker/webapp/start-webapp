@@ -29,6 +29,10 @@ if [[ ! -e secret.key ]]; then
     log "No secret.key file found -- deleting old sessions..."
     manage-mibios shell -c "from django.contrib.sessions.models import *; ret = Session.objects.all().delete(); print('Sessions deleted:', ret)" &
 fi
-manage-mibios collectstatic --no-input --clear -v 2 &
+# Delete files from previous collectstatic runs
+for i in admin bootstrap5 django_extensions glamr mibios popper2 rest_framework; do
+    rm -rf -- ./static/$i
+done
+manage-mibios collectstatic --no-input -v 2 &
 manage-mibios generate_model_graphs &
 exec uwsgi --chdir "$APP_BASE_DIR" --ini /etc/uwsgi.ini
