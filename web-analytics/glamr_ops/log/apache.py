@@ -91,6 +91,20 @@ def cli():
         '--quick', action='store_true',
         help='Auto-mode plotting only very recent data.'
     )
+    errors_parser = subs.add_parser('errors', help='Get URLs with errors')
+    errors_parser.add_argument(
+        'logfiles', nargs='+',
+        help='One or more apache access log file',
+    )
+    errors_parser.add_argument(
+        '--status',
+        help='Only list given status codes (comma-separated list)',
+    )
+    errors_parser.add_argument(
+        '-o', '--output',
+        help='Output file',
+    )
+
     args = argp.parse_args()
     match args.cmd:
         case 'fix': fix_logs(*args.paths)
@@ -229,6 +243,13 @@ def cli():
                     logs.plot_week(outdir=args.outdir, format=args.format)
                     logs.plot_30days(outdir=args.outdir, format=args.format)
                     logs.plot_all_years(outdir=args.outdir, format=args.format)
+        case 'errors':
+            if args.status:
+                status = [int(i) for i in args.status.split(',')]
+            else:
+                status = None
+            logs = LogData(data_dir=None)
+            logs.collect_errors(*args.logfiles, with_status=status, output=args.output)
         case _: argp.error('invalid subcommand')
 
 
@@ -1241,6 +1262,29 @@ class LogData:
                     continue
 
             self.plot_year(year, outdir=outdir, format=format)
+
+    def collect_errors(self, *logfiles, with_status=None, output=None):
+        log_iters = [
+            LogEntries(path, skip_bad_lines=True)
+            for path in logfiles
+        ]
+        rows = []
+        for i in chain.from_iterable(log_iters):
+            if i.status < 400 or i.status == 429:
+                continue
+            if with_status and i.status not in with_status:
+                continue
+            rows.append(
+                (i.timestamp.isoformat(), i.proto, i.status, i.meth, i.path, i.query)
+            )
+
+        if output is None:
+            ofile = sys.stdout
+        else:
+            ofile = open(output, 'w')
+        for row in rows:
+            ofile.write('\t'.join((str(i) for i in row)))
+            ofile.write('\n')
 
 
 def fix_file(ifile, ofile, efile):
