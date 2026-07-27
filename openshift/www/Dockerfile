@@ -22,6 +22,7 @@ RUN adduser --system --no-create-home --uid $APPLICATION_USER_ID --ingroup root 
 
 COPY 000-default.conf /etc/apache2/sites-available/
 COPY robots.txt /var/www/html/
+RUN ln -s /glamr-webapp/static/glamr/img/GLMA_Logo_Icon.png /var/www/html/favicon.ico
 
 RUN ln -s /apache24-authuserfile/authuserfile /etc/apache2/passwords
 RUN a2enmod proxy

@@ -19,6 +19,7 @@ RUN apt-get update --quiet && apt-get upgrade --assume-yes --quiet && apt-get in
 
 COPY 000-default.conf /etc/apache2/sites-available/
 COPY robots.txt /var/www/html/
+RUN ln -s /glamr-webapp/static/glamr/img/GLMA_Logo_Icon.png /var/www/html/favicon.ico
 
 RUN ln -s /secrets/passwords /etc/apache2/passwords
 RUN a2enmod proxy
