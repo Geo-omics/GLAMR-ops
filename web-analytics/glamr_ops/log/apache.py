@@ -223,7 +223,7 @@ def cli():
                         data_dir=args.hits_data,
                         first_day=datetime_date.today(),
                     )
-                    now = datetime.now().astimezone()
+                    now = datetime.now().astimezone().replace(microsecond=0)
                     odir = Path(args.outdir)
                     items = [
                         (timedelta(minutes=10), 'last10minutes'),
