@@ -696,12 +696,18 @@ class LogData:
                     logfile_name = Path(logfile_name).name
                     if line_count0 := self.import_state.get(logfile_name):
                         if line_count0 != line_count:
-                            raise RuntimeError(
-                                f'import line count inconsistency: {path=} '
-                                f'{logfile_name=} {line_count0=} {line_count=}'
-                            )
-                    else:
-                        self.import_state[logfile_name] = line_count
+                            if line_count0 < line_count:
+                                # expected for first logfile of month
+                                print(
+                                    f'[NOTICE] import line count inconsistency: {y}/{m}'
+                                    f' {logfile_name} {line_count0=} -> {line_count=}'
+                                )
+                            else:
+                                raise RuntimeError(
+                                    f'import line count inconsistency: {path=} '
+                                    f'{logfile_name=} {line_count0=} {line_count=}'
+                                )
+                    self.import_state[logfile_name] = line_count
 
                 for date, single_day_data in data['hits'].items():
                     date = datetime_date.fromisoformat(date)
