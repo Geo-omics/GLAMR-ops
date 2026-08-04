@@ -308,6 +308,11 @@ class ApacheLogEntry:
 
         kw = {k: v for k, v in m.groupdict().items() if k in cls.__dataclass_fields__}
 
+        kw = {
+            k: int(v) if cls.__dataclass_fields__[k].type is int else v
+            for k, v in kw.items()
+        }
+
         try:
             kw['timestamp'] = datetime.strptime(
                 kw['timestamp'],
@@ -1120,6 +1125,9 @@ class LogData:
 
     def plot(self, start, end, output=None, format=default_plot_fmt):
         """ Plot given interval """
+        print('BORK A')
+        import matplotlib
+        matplotlib.use('WebAgg')
         if start is None:
             start = self.start
         elif isinstance(start, str):
@@ -1144,8 +1152,11 @@ class LogData:
             elif output.suffix != '.' + format:
                 output = output.with_suffix('.' + format)
         print('Plotting... ', end='', flush=True)
-        ax.figure.savefig(output)
-        print(f'saved as: {output} [OK]')
+        ax.figure.show()
+        print('BORK DONE')
+        input('???')
+        #ax.figure.savefig(output)
+        #print(f'saved as: {output} [OK]')
 
     def plot_year(self, year=None, outdir=None, format=default_plot_fmt):
         if year is None:
